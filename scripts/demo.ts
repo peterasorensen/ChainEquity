@@ -73,17 +73,31 @@ const TOKEN_ABI = [
   },
   {
     type: 'function',
-    name: 'isApproved',
-    inputs: [{ name: 'wallet', type: 'address' }],
+    name: 'allowlist',
+    inputs: [{ name: 'account', type: 'address' }],
     outputs: [{ type: 'bool' }],
     stateMutability: 'view',
   },
   {
     type: 'function',
-    name: 'approveWallet',
-    inputs: [{ name: 'wallet', type: 'address' }],
+    name: 'addToAllowlist',
+    inputs: [{ name: 'account', type: 'address' }],
     outputs: [],
     stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'removeFromAllowlist',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'splitMultiplier',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -107,8 +121,11 @@ const TOKEN_ABI = [
   },
   {
     type: 'function',
-    name: 'executeStockSplit',
-    inputs: [{ name: 'multiplier', type: 'uint256' }],
+    name: 'stockSplit',
+    inputs: [
+      { name: 'numerator', type: 'uint256' },
+      { name: 'denominator', type: 'uint256' },
+    ],
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -264,7 +281,7 @@ async function main() {
     const approveAHash = await adminClient.writeContract({
       address: CONTRACT_ADDRESS,
       abi: TOKEN_ABI,
-      functionName: 'approveWallet',
+      functionName: 'addToAllowlist',
       args: [walletAAddress],
     });
     await publicClient.waitForTransactionReceipt({ hash: approveAHash });
@@ -275,7 +292,7 @@ async function main() {
     const approveBHash = await adminClient.writeContract({
       address: CONTRACT_ADDRESS,
       abi: TOKEN_ABI,
-      functionName: 'approveWallet',
+      functionName: 'addToAllowlist',
       args: [walletBAddress],
     });
     await publicClient.waitForTransactionReceipt({ hash: approveBHash });
@@ -333,7 +350,7 @@ async function main() {
     const approveCHash = await adminClient.writeContract({
       address: CONTRACT_ADDRESS,
       abi: TOKEN_ABI,
-      functionName: 'approveWallet',
+      functionName: 'addToAllowlist',
       args: [walletCAddress],
     });
     await publicClient.waitForTransactionReceipt({ hash: approveCHash });
@@ -359,8 +376,8 @@ async function main() {
     const splitHash = await adminClient.writeContract({
       address: CONTRACT_ADDRESS,
       abi: TOKEN_ABI,
-      functionName: 'executeStockSplit',
-      args: [7n],
+      functionName: 'stockSplit',
+      args: [7n, 1n], // 7-for-1 split (numerator: 7, denominator: 1)
     });
     await publicClient.waitForTransactionReceipt({ hash: splitHash });
     success('Stock split executed - all balances multiplied by 7');

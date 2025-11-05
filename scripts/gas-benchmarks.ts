@@ -31,7 +31,7 @@ const GAS_TARGETS: Record<string, { target: number; description: string }> = {
     target: 100000,
     description: 'Mint tokens to approved wallet',
   },
-  approveWallet: {
+  addToAllowlist: {
     target: 50000,
     description: 'Approve wallet for transfers',
   },
@@ -39,11 +39,11 @@ const GAS_TARGETS: Record<string, { target: number; description: string }> = {
     target: 100000,
     description: 'Transfer between approved wallets',
   },
-  revokeWallet: {
+  removeFromAllowlist: {
     target: 50000,
     description: 'Revoke wallet approval',
   },
-  executeStockSplit: {
+  stockSplit: {
     target: 100000,
     description: 'Execute stock split (multiplier optimization)',
   },
@@ -184,7 +184,7 @@ function generateMarkdownReport(metrics: GasMetric[]): string {
         markdown += '- Use unchecked arithmetic where overflow is impossible\n';
         markdown += '- Minimize storage writes\n';
         markdown += '- Consider batching multiple mints\n';
-      } else if (metric.operation === 'approveWallet') {
+      } else if (metric.operation === 'addToAllowlist') {
         markdown += 'Recommendations:\n';
         markdown += '- Use packed storage for approval mappings\n';
         markdown += '- Minimize event emission overhead\n';
@@ -193,7 +193,7 @@ function generateMarkdownReport(metrics: GasMetric[]): string {
         markdown += '- Optimize approval checks (use cached values)\n';
         markdown += '- Use unchecked arithmetic for balance updates\n';
         markdown += '- Consider ERC20 optimizations from Solmate\n';
-      } else if (metric.operation === 'executeStockSplit') {
+      } else if (metric.operation === 'stockSplit') {
         markdown += 'Recommendations:\n';
         markdown += '- Current implementation uses multiplier optimization\n';
         markdown += '- If still too high, consider virtual balance approach\n';
