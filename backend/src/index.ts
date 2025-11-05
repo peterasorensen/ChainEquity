@@ -143,24 +143,24 @@ const mountRoutes = () => {
   app.use('/api/allowlist', createAllowlistRouter(blockchainService, dbQueries));
   app.use('/api/relayer', createRelayerRouter(blockchainService));
   console.log('API routes mounted');
+
+  // Error handling middleware (must be after routes)
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  });
+
+  // 404 handler (must be last)
+  app.use((req: Request, res: Response) => {
+    res.status(404).json({
+      success: false,
+      error: 'Endpoint not found'
+    });
+  });
 };
-
-// Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error'
-  });
-});
-
-// 404 handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found'
-  });
-});
 
 // Graceful shutdown
 const shutdown = () => {

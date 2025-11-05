@@ -95,7 +95,13 @@ export async function getAllowlist(): Promise<AllowlistEntry[]> {
       'Content-Type': 'application/json',
     },
   });
-  return handleResponse<AllowlistEntry[]>(response);
+  const result = await handleResponse<{ success: boolean; data: { addresses: string[] } }>(response);
+  // Convert addresses array to AllowlistEntry format
+  return result.data.addresses.map(address => ({
+    address,
+    isApproved: true, // All addresses in the list are approved
+    timestamp: Date.now()
+  }));
 }
 
 export async function checkAllowlist(address: string): Promise<{ isApproved: boolean }> {

@@ -59,8 +59,13 @@ export default function CapTable() {
     );
   }
 
-  const ownershipChartData = data.ownershipData || [];
+  const entries = data.entries || [];
+  const ownershipChartData = entries.map(entry => ({
+    name: entry.address.substring(0, 6) + '...' + entry.address.substring(38),
+    value: parseFloat(entry.balance)
+  }));
   const totalRaised = parseFloat(data.totalRaised || '0');
+  const totalShares = data.totalShares || '0';
 
   return (
     <div className={styles.container}>
@@ -68,15 +73,15 @@ export default function CapTable() {
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>Total Supply</div>
-          <div className={styles.statValue}>{formatNumber(data.totalSupply)}</div>
+          <div className={styles.statValue}>{formatNumber(totalShares)}</div>
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>Total Raised</div>
           <div className={styles.statValue}>{formatCurrency(totalRaised)}</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>Share Classes</div>
-          <div className={styles.statValue}>{data.shareClasses.length}</div>
+          <div className={styles.statLabel}>Total Holders</div>
+          <div className={styles.statValue}>{data.holders || 0}</div>
         </div>
       </div>
 
@@ -122,74 +127,70 @@ export default function CapTable() {
             <p className={styles.chartSubtitle}>Capital raised by share class</p>
           </div>
           <div className={styles.chartContainer}>
-            {data.shareClasses.length > 0 ? (
+            {entries.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={data.shareClasses.map(sc => ({
-                      name: sc.name,
-                      value: parseFloat(sc.amountRaised || '0')
+                    data={entries.map(entry => ({
+                      name: entry.address.substring(0, 6) + '...' + entry.address.substring(38),
+                      value: parseFloat(entry.balance)
                     }))}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
+                    label={(entry) => `${entry.name}: ${formatNumber(entry.value.toString())}`}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {data.shareClasses.map((entry, index) => (
+                    {entries.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value: number) => formatNumber(value.toString())} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <p className={styles.noData}>No fundraising data available</p>
+              <p className={styles.noData}>No token holders yet</p>
             )}
           </div>
         </div>
       </div>
 
-      {/* Share Classes Table */}
+      {/* Token Holders Table */}
       <div className={styles.tableCard}>
         <div className={styles.tableHeader}>
-          <h3 className={styles.tableTitle}>Share Classes</h3>
+          <h3 className={styles.tableTitle}>Token Holders</h3>
         </div>
         <div className={styles.tableWrapper}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Share Class</th>
-                <th>Authorized Shares</th>
-                <th>Outstanding Shares</th>
-                <th>Ownership %</th>
-                <th>Fully Diluted</th>
-                <th>Amount Raised</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.shareClasses.map((shareClass, index) => (
-                <tr key={index}>
-                  <td>
-                    <span className="font-medium">{shareClass.name}</span>
-                  </td>
-                  <td>{formatNumber(shareClass.authorizedShares)}</td>
-                  <td>{formatNumber(shareClass.outstandingShares)}</td>
-                  <td>
-                    <span className="badge badge-info">
-                      {shareClass.ownershipPercentage.toFixed(2)}%
-                    </span>
-                  </td>
-                  <td>{formatNumber(shareClass.fullyDilutedCount)}</td>
-                  <td className="font-semibold">
-                    {formatCurrency(parseFloat(shareClass.amountRaised || '0'))}
-                  </td>
+          {entries.length > 0 ? (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Wallet Address</th>
+                  <th>Balance</th>
+                  <th>Ownership %</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {entries.map((entry, index) => (
+                  <tr key={index}>
+                    <td>
+                      <span className="font-medium">{entry.address}</span>
+                    </td>
+                    <td>{formatNumber(entry.balance)}</td>
+                    <td>
+                      <span className="badge badge-info">
+                        {entry.percentage.toFixed(2)}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className={styles.noData}>No token holders yet. Mint tokens to get started!</p>
+          )}
         </div>
       </div>
 

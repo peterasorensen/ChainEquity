@@ -16,10 +16,16 @@ const config = createConfig({
     walletConnect({
       projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id',
       showQrModal: true,
+      metadata: {
+        name: 'ChainEquity',
+        description: 'Tokenized Security Platform',
+        url: 'https://chainequity.example',
+        icons: ['https://avatars.githubusercontent.com/u/37784886']
+      },
     }),
   ],
   transports: {
-    [polygonAmoy.id]: http(),
+    [polygonAmoy.id]: http('https://rpc-amoy.polygon.technology'),
   },
 });
 
