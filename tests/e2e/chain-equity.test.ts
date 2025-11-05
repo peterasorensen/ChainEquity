@@ -37,7 +37,7 @@ const WALLET_B_KEY = '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804
 const WALLET_C_KEY = '0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6';
 const UNAUTHORIZED_KEY = '0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a';
 
-// Contract ABI (minimal interface for testing)
+// Contract ABI (from actual GatedEquityToken contract)
 const TOKEN_ABI = [
   {
     type: 'function',
@@ -69,22 +69,29 @@ const TOKEN_ABI = [
   },
   {
     type: 'function',
-    name: 'isApproved',
-    inputs: [{ name: 'wallet', type: 'address' }],
+    name: 'splitMultiplier',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'allowlist',
+    inputs: [{ name: 'account', type: 'address' }],
     outputs: [{ type: 'bool' }],
     stateMutability: 'view',
   },
   {
     type: 'function',
-    name: 'approveWallet',
-    inputs: [{ name: 'wallet', type: 'address' }],
+    name: 'addToAllowlist',
+    inputs: [{ name: 'account', type: 'address' }],
     outputs: [],
     stateMutability: 'nonpayable',
   },
   {
     type: 'function',
-    name: 'revokeWallet',
-    inputs: [{ name: 'wallet', type: 'address' }],
+    name: 'removeFromAllowlist',
+    inputs: [{ name: 'account', type: 'address' }],
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -103,15 +110,18 @@ const TOKEN_ABI = [
     name: 'transfer',
     inputs: [
       { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' },
+      { name: 'value', type: 'uint256' },
     ],
     outputs: [{ type: 'bool' }],
     stateMutability: 'nonpayable',
   },
   {
     type: 'function',
-    name: 'executeStockSplit',
-    inputs: [{ name: 'multiplier', type: 'uint256' }],
+    name: 'stockSplit',
+    inputs: [
+      { name: 'numerator', type: 'uint256' },
+      { name: 'denominator', type: 'uint256' },
+    ],
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -133,20 +143,18 @@ const TOKEN_ABI = [
   },
   {
     type: 'event',
-    name: 'WalletApproved',
-    inputs: [{ name: 'wallet', type: 'address', indexed: true }],
-  },
-  {
-    type: 'event',
-    name: 'WalletRevoked',
-    inputs: [{ name: 'wallet', type: 'address', indexed: true }],
+    name: 'AllowlistUpdated',
+    inputs: [
+      { name: 'account', type: 'address', indexed: true },
+      { name: 'status', type: 'bool', indexed: false },
+    ],
   },
   {
     type: 'event',
     name: 'StockSplit',
     inputs: [
-      { name: 'multiplier', type: 'uint256', indexed: false },
-      { name: 'timestamp', type: 'uint256', indexed: false },
+      { name: 'oldMultiplier', type: 'uint256', indexed: false },
+      { name: 'newMultiplier', type: 'uint256', indexed: false },
     ],
   },
   {
@@ -232,22 +240,28 @@ describe('ChainEquity E2E Tests', () => {
       transport: http(ANVIL_RPC_URL),
     });
 
-    // Deploy contract using forge script
+    // Deploy fresh contract for testing
     console.log('Deploying ChainEquity contract...');
 
-    // Note: In a real setup, you would deploy the contract here
-    // For this test, we assume the contract is deployed via forge script
-    // and the address is available in environment variable
-    const deployedAddress = process.env.CONTRACT_ADDRESS;
+    // Read the compiled contract bytecode and ABI
+    const fs = await import('fs');
+    const path = await import('path');
+    const contractJson = JSON.parse(
+      fs.readFileSync(
+        path.join(__dirname, '../../contracts/out/GatedEquityToken.sol/GatedEquityToken.json'),
+        'utf-8'
+      )
+    );
 
-    if (!deployedAddress) {
-      throw new Error(
-        'CONTRACT_ADDRESS not found. Please deploy the contract first using: ' +
-        'cd contracts && forge script script/Deploy.s.sol --rpc-url $ANVIL_RPC_URL --broadcast'
-      );
-    }
+    // Deploy the contract
+    const hash = await adminClient.deployContract({
+      abi: contractJson.abi,
+      bytecode: contractJson.bytecode.object as `0x${string}`,
+      args: ['ChainEquity', 'CEQT', adminAddress],
+    });
 
-    contractAddress = deployedAddress as Address;
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    contractAddress = receipt.contractAddress!;
     console.log(`Contract deployed at: ${contractAddress}`);
   });
 
@@ -273,7 +287,7 @@ describe('ChainEquity E2E Tests', () => {
       const hash = await adminClient.writeContract({
         address: contractAddress,
         abi: TOKEN_ABI,
-        functionName: 'approveWallet',
+        functionName: 'addToAllowlist',
         args: [walletAAddress],
       });
 
@@ -282,7 +296,7 @@ describe('ChainEquity E2E Tests', () => {
       const isApproved = await publicClient.readContract({
         address: contractAddress,
         abi: TOKEN_ABI,
-        functionName: 'isApproved',
+        functionName: 'allowlist',
         args: [walletAAddress],
       });
 
@@ -315,7 +329,7 @@ describe('ChainEquity E2E Tests', () => {
       const hash = await adminClient.writeContract({
         address: contractAddress,
         abi: TOKEN_ABI,
-        functionName: 'approveWallet',
+        functionName: 'addToAllowlist',
         args: [walletBAddress],
       });
 
@@ -324,7 +338,7 @@ describe('ChainEquity E2E Tests', () => {
       const isApproved = await publicClient.readContract({
         address: contractAddress,
         abi: TOKEN_ABI,
-        functionName: 'isApproved',
+        functionName: 'allowlist',
         args: [walletBAddress],
       });
 
@@ -369,7 +383,7 @@ describe('ChainEquity E2E Tests', () => {
       const isApproved = await publicClient.readContract({
         address: contractAddress,
         abi: TOKEN_ABI,
-        functionName: 'isApproved',
+        functionName: 'allowlist',
         args: [walletCAddress],
       });
 
@@ -412,7 +426,7 @@ describe('ChainEquity E2E Tests', () => {
       const approveHash = await adminClient.writeContract({
         address: contractAddress,
         abi: TOKEN_ABI,
-        functionName: 'approveWallet',
+        functionName: 'addToAllowlist',
         args: [walletCAddress],
       });
 
@@ -421,7 +435,7 @@ describe('ChainEquity E2E Tests', () => {
       const isApproved = await publicClient.readContract({
         address: contractAddress,
         abi: TOKEN_ABI,
-        functionName: 'isApproved',
+        functionName: 'allowlist',
         args: [walletCAddress],
       });
 
@@ -492,8 +506,8 @@ describe('ChainEquity E2E Tests', () => {
       const hash = await adminClient.writeContract({
         address: contractAddress,
         abi: TOKEN_ABI,
-        functionName: 'executeStockSplit',
-        args: [7n],
+        functionName: 'stockSplit',
+        args: [7n, 1n], // numerator, denominator
       });
 
       await publicClient.waitForTransactionReceipt({ hash });
@@ -646,7 +660,7 @@ describe('ChainEquity E2E Tests', () => {
         const hash = await unauthorizedClient.writeContract({
           address: contractAddress,
           abi: TOKEN_ABI,
-          functionName: 'approveWallet',
+          functionName: 'addToAllowlist',
           args: [unauthorizedAddress],
         });
 
@@ -672,8 +686,8 @@ describe('ChainEquity E2E Tests', () => {
         const hash = await unauthorizedClient.writeContract({
           address: contractAddress,
           abi: TOKEN_ABI,
-          functionName: 'executeStockSplit',
-          args: [2n],
+          functionName: 'stockSplit',
+          args: [2n, 1n], // numerator, denominator
         });
 
         await publicClient.waitForTransactionReceipt({ hash });
@@ -700,7 +714,7 @@ describe('ChainEquity E2E Tests', () => {
       const revokeHash = await adminClient.writeContract({
         address: contractAddress,
         abi: TOKEN_ABI,
-        functionName: 'revokeWallet',
+        functionName: 'removeFromAllowlist',
         args: [walletCAddress],
       });
 
@@ -721,7 +735,7 @@ describe('ChainEquity E2E Tests', () => {
       const reapproveHash = await adminClient.writeContract({
         address: contractAddress,
         abi: TOKEN_ABI,
-        functionName: 'approveWallet',
+        functionName: 'addToAllowlist',
         args: [walletCAddress],
       });
 
