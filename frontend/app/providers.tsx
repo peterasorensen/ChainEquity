@@ -10,9 +10,12 @@ import { ReactNode } from 'react';
 const config = createConfig({
   chains: [polygonAmoy],
   connectors: [
-    injected({ target: 'metaMask' }),
+    injected({
+      shimDisconnect: true,
+    }),
     walletConnect({
       projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id',
+      showQrModal: true,
     }),
   ],
   transports: {

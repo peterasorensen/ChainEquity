@@ -1,13 +1,27 @@
 'use client';
 
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useState } from 'react';
 import styles from './Header.module.css';
 import { formatAddress } from '../lib/api';
 
 export default function Header() {
   const { address, isConnected, chain } = useAccount();
-  const { connect, connectors } = useConnect();
+  const { connect, connectors, error } = useConnect();
   const { disconnect } = useDisconnect();
+  const [showConnectors, setShowConnectors] = useState(false);
+
+  const handleConnect = async (connectorId: string) => {
+    try {
+      const connector = connectors.find(c => c.id === connectorId);
+      if (connector) {
+        await connect({ connector });
+        setShowConnectors(false);
+      }
+    } catch (err) {
+      console.error('Failed to connect:', err);
+    }
+  };
 
   return (
     <header className={styles.header}>
@@ -38,17 +52,34 @@ export default function Header() {
               </button>
             </>
           ) : (
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                const metamaskConnector = connectors.find(c => c.id === 'injected');
-                if (metamaskConnector) {
-                  connect({ connector: metamaskConnector });
-                }
-              }}
-            >
-              Connect Wallet
-            </button>
+            <div className={styles.walletConnectContainer}>
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowConnectors(!showConnectors)}
+              >
+                Connect Wallet
+              </button>
+
+              {showConnectors && (
+                <div className={styles.connectorsDropdown}>
+                  {connectors.map((connector) => (
+                    <button
+                      key={connector.id}
+                      onClick={() => handleConnect(connector.id)}
+                      className={styles.connectorButton}
+                    >
+                      {connector.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <div className={styles.errorMessage}>
+                  {error.message}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
