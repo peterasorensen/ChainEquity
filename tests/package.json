@@ -1,0 +1,20 @@
+{
+  "name": "@chain-equity/tests",
+  "version": "1.0.0",
+  "description": "E2E and integration tests for ChainEquity",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run e2e",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4",
+    "viem": "^2.7.0",
+    "better-sqlite3": "^12.4.1",
+    "dotenv": "^16.3.1"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "chain-equity",
+  "version": "1.0.0",
+  "description": "Tokenized Security Prototype with Compliance Gating",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "setup": "./scripts/setup.sh",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "test": "npm run test:contracts && npm run test:backend && npm run test:e2e",
+    "test:contracts": "cd contracts && forge test",
+    "test:backend": "cd backend && npm test",
+    "test:e2e": "cd tests && npm test",
+    "test:watch": "cd tests && npm run test:watch",
+    "deploy": "cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url $POLYGON_RPC_URL --broadcast",
+    "deploy:local": "cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadcast",
+    "build": "npm run build:contracts && npm run build:backend && npm run build:frontend",
+    "build:contracts": "cd contracts && forge build",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "demo": "ts-node scripts/demo.ts",
+    "gas-benchmarks": "cd contracts && forge test --gas-report > gas-report.txt && cd .. && ts-node scripts/gas-benchmarks.ts",
+    "health-check": "ts-node scripts/health-check.ts",
+    "anvil": "anvil"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
