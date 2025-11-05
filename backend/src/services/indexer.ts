@@ -33,8 +33,9 @@ export class EventIndexer {
       this.dbQueries.updateLastIndexedBlock(Number(currentBlock));
     } else {
       console.log(`Resuming from block: ${lastIndexedBlock}`);
-      // Catch up on missed blocks
-      await this.indexHistoricalBlocks(lastIndexedBlock, Number(currentBlock));
+      // Skip historical indexing - just start from current block
+      // If we need historical data, we can index it in the background later
+      this.dbQueries.updateLastIndexedBlock(Number(currentBlock));
     }
 
     // Start polling for new blocks
@@ -92,8 +93,7 @@ export class EventIndexer {
 
   // Index a range of blocks
   private async indexBlockRange(fromBlock: number, toBlock: number) {
-    console.log(`Indexing blocks ${fromBlock} to ${toBlock}...`);
-
+    // Only log if we actually find events
     const publicClient = this.blockchainService.getPublicClient();
     const contractAddress = this.blockchainService.getContractAddress();
 
@@ -112,7 +112,11 @@ export class EventIndexer {
 
       // Update last indexed block
       this.dbQueries.updateLastIndexedBlock(toBlock);
-      console.log(`Indexed ${logs.length} events up to block ${toBlock}`);
+
+      // Only log if we found events
+      if (logs.length > 0) {
+        console.log(`Indexed ${logs.length} events up to block ${toBlock}`);
+      }
     } catch (error) {
       console.error(`Error indexing blocks ${fromBlock}-${toBlock}:`, error);
       throw error;
@@ -230,7 +234,7 @@ export class EventIndexer {
   // Handle AllowlistUpdated events
   private async handleAllowlistUpdate(args: any, blockNumber: number, timestamp: number) {
     const account = (args.account as string).toLowerCase();
-    const approved = args.approved as boolean;
+    const approved = args.status as boolean; // Field is named 'status' in the contract event
 
     console.log(`AllowlistUpdate: ${account}, approved: ${approved}`);
 

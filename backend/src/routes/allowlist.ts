@@ -56,13 +56,17 @@ export const createAllowlistRouter = (
     try {
       console.log('API: Getting all allowlisted addresses');
 
-      const allowlisted = dbQueries.getAllAllowlisted();
+      // Get from database first (indexed data)
+      const dbAllowlisted = dbQueries.getAllAllowlisted();
 
+      // For now, return database data
+      // In a production system, we'd query all Transfer/Mint events to find unique holders
+      // and check each one against the allowlist contract
       res.json({
         success: true,
         data: {
-          count: allowlisted.length,
-          addresses: allowlisted
+          count: dbAllowlisted.length,
+          addresses: dbAllowlisted
         }
       } as ApiResponse);
     } catch (error: any) {

@@ -60,12 +60,19 @@ export default function CapTable() {
   }
 
   const entries = data.entries || [];
+
+  // Convert from wei (10^18) to tokens
+  const fromWei = (weiValue: string): number => {
+    return parseFloat(weiValue) / 1e18;
+  };
+
   const ownershipChartData = entries.map(entry => ({
     name: entry.address.substring(0, 6) + '...' + entry.address.substring(38),
-    value: parseFloat(entry.balance)
+    value: entry.percentage, // Use percentage from backend
+    tokens: fromWei(entry.balance)
   }));
   const totalRaised = parseFloat(data.totalRaised || '0');
-  const totalShares = data.totalShares || '0';
+  const totalShares = fromWei(data.totalShares || '0');
 
   return (
     <div className={styles.container}>
@@ -133,12 +140,13 @@ export default function CapTable() {
                   <Pie
                     data={entries.map(entry => ({
                       name: entry.address.substring(0, 6) + '...' + entry.address.substring(38),
-                      value: parseFloat(entry.balance)
+                      value: fromWei(entry.balance),
+                      percentage: entry.percentage
                     }))}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry) => `${entry.name}: ${formatNumber(entry.value.toString())}`}
+                    label={(entry) => `${entry.name}: ${formatNumber(entry.value.toString())} (${entry.percentage.toFixed(1)}%)`}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
@@ -147,7 +155,7 @@ export default function CapTable() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatNumber(value.toString())} />
+                  <Tooltip formatter={(value: number) => formatNumber(value.toString()) + ' tokens'} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -178,7 +186,7 @@ export default function CapTable() {
                     <td>
                       <span className="font-medium">{entry.address}</span>
                     </td>
-                    <td>{formatNumber(entry.balance)}</td>
+                    <td>{formatNumber(fromWei(entry.balance).toString())}</td>
                     <td>
                       <span className="badge badge-info">
                         {entry.percentage.toFixed(2)}%

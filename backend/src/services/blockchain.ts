@@ -128,7 +128,7 @@ export class BlockchainService {
       const isAllowlisted = await this.publicClient.readContract({
         address: this.contractAddress,
         abi: CHAIN_EQUITY_ABI,
-        functionName: 'isAllowlisted',
+        functionName: 'allowlist', // Public mapping has auto-generated getter
         args: [address as Address]
       });
 
@@ -231,15 +231,15 @@ export class BlockchainService {
   }
 
   // Corporate actions
-  async executeStockSplit(multiplier: number): Promise<Hash> {
-    console.log(`Executing stock split with multiplier: ${multiplier}...`);
+  async executeStockSplit(numerator: number, denominator: number): Promise<Hash> {
+    console.log(`Executing stock split: ${numerator}-for-${denominator}...`);
 
     try {
       const { request } = await this.publicClient.simulateContract({
         address: this.contractAddress,
         abi: CHAIN_EQUITY_ABI,
-        functionName: 'executeStockSplit',
-        args: [BigInt(multiplier)],
+        functionName: 'stockSplit',
+        args: [BigInt(numerator), BigInt(denominator)],
         account: this.account
       });
 

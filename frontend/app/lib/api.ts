@@ -73,18 +73,20 @@ export async function getCapTableData(): Promise<CapTableData> {
       'Content-Type': 'application/json',
     },
   });
-  return handleResponse<CapTableData>(response);
+  const result = await handleResponse<{ success: boolean; data: any }>(response);
+  return result.data;
 }
 
 // Token Info API
 export async function getTokenInfo(): Promise<TokenInfo> {
-  const response = await fetch(`${API_BASE_URL}/api/token/info`, {
+  const response = await fetch(`${API_BASE_URL}/api/tokens/info`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
     },
   });
-  return handleResponse<TokenInfo>(response);
+  const result = await handleResponse<{ success: boolean; data: TokenInfo }>(response);
+  return result.data;
 }
 
 // Allowlist APIs
@@ -95,12 +97,12 @@ export async function getAllowlist(): Promise<AllowlistEntry[]> {
       'Content-Type': 'application/json',
     },
   });
-  const result = await handleResponse<{ success: boolean; data: { addresses: string[] } }>(response);
+  const result = await handleResponse<{ success: boolean; data: { addresses: any[] } }>(response);
   // Convert addresses array to AllowlistEntry format
-  return result.data.addresses.map(address => ({
-    address,
-    isApproved: true, // All addresses in the list are approved
-    timestamp: Date.now()
+  return result.data.addresses.map((entry: any) => ({
+    address: entry.address || entry,
+    isApproved: entry.approved !== undefined ? entry.approved : true,
+    approvedAt: entry.timestamp
   }));
 }
 
@@ -111,11 +113,12 @@ export async function checkAllowlist(address: string): Promise<{ isApproved: boo
       'Content-Type': 'application/json',
     },
   });
-  return handleResponse<{ isApproved: boolean }>(response);
+  const result = await handleResponse<{ success: boolean; data: { approved: boolean } }>(response);
+  return { isApproved: result.data.approved };
 }
 
 export async function approveAddress(address: string): Promise<TransactionResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/allowlist/approve`, {
+  const response = await fetch(`${API_BASE_URL}/api/wallets/approve`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -126,7 +129,7 @@ export async function approveAddress(address: string): Promise<TransactionRespon
 }
 
 export async function revokeAddress(address: string): Promise<TransactionResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/allowlist/revoke`, {
+  const response = await fetch(`${API_BASE_URL}/api/wallets/revoke`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -138,14 +141,19 @@ export async function revokeAddress(address: string): Promise<TransactionRespons
 
 // Minting API
 export async function mintTokens(data: MintRequest): Promise<TransactionResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/mint`, {
+  const response = await fetch(`${API_BASE_URL}/api/tokens/mint`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ to: data.recipient, amount: data.amount }),
   });
-  return handleResponse<TransactionResponse>(response);
+  const result = await handleResponse<{ success: boolean; data: any }>(response);
+  return {
+    success: result.success,
+    transactionHash: result.data.transactionHash,
+    message: result.data.message
+  };
 }
 
 // Corporate Actions APIs
@@ -161,14 +169,19 @@ export async function executeStockSplit(data: SplitRequest): Promise<Transaction
 }
 
 export async function changeSymbol(data: SymbolChangeRequest): Promise<TransactionResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/corporate-actions/change-symbol`, {
+  const response = await fetch(`${API_BASE_URL}/api/corporate-actions/rename`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
   });
-  return handleResponse<TransactionResponse>(response);
+  const result = await handleResponse<{ success: boolean; data: any }>(response);
+  return {
+    success: result.success,
+    transactionHash: result.data.transactionHash,
+    message: result.data.message
+  };
 }
 
 // Balance check

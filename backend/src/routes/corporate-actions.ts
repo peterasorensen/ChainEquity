@@ -26,7 +26,8 @@ export const createCorporateActionsRouter = (blockchainService: BlockchainServic
       }
 
       console.log(`API: Executing stock split with multiplier ${multiplier}`);
-      const txHash = await blockchainService.executeStockSplit(multiplier);
+      // For a multiplier-for-1 split (e.g., 7-for-1), pass numerator=multiplier, denominator=1
+      const txHash = await blockchainService.executeStockSplit(multiplier, 1);
 
       res.json({
         success: true,
