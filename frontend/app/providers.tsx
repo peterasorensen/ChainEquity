@@ -1,10 +1,34 @@
 'use client';
 
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { polygonAmoy } from 'wagmi/chains';
+import { defineChain } from 'viem';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injected, walletConnect } from 'wagmi/connectors';
 import { ReactNode } from 'react';
+
+// Define Polygon Amoy chain with flexible configuration
+// This matches the standard Polygon Amoy testnet
+export const polygonAmoy = defineChain({
+  id: 80002,
+  name: 'Polygon Amoy Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'MATIC',
+    symbol: 'MATIC',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://polygon-amoy.drpc.org'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'PolygonScan',
+      url: 'https://amoy.polygonscan.com',
+    },
+  },
+  testnet: true,
+});
 
 // Create Wagmi config for Polygon Amoy testnet
 const config = createConfig({
@@ -25,8 +49,10 @@ const config = createConfig({
     }),
   ],
   transports: {
-    [polygonAmoy.id]: http('https://rpc-amoy.polygon.technology'),
+    [polygonAmoy.id]: http('https://polygon-amoy.drpc.org'),
   },
+  multiInjectedProviderDiscovery: false,
+  ssr: false,
 });
 
 // Create React Query client

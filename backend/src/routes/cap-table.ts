@@ -3,90 +3,76 @@ import { BlockchainService } from '../services/blockchain';
 import { ApiResponse } from '../types';
 import { formatEther } from 'viem';
 
-export const createCapTableRouter = (blockchainService: BlockchainService) => {
+export const createCapTableRouter = (blockchainService: BlockchainService, dbQueries: any) => {
   const router = Router();
 
-  // GET /api/cap-table - Get cap table directly from blockchain
+  // GET /api/cap-table - Get cap table using hybrid approach
   router.get('/', async (req: Request, res: Response) => {
     try {
-      console.log('API: Getting cap table from blockchain');
+      console.log('API: Getting cap table from blockchain (hybrid approach)');
 
       const publicClient = blockchainService.getPublicClient();
       const contractAddress = blockchainService.getContractAddress();
 
-      // Get current block to calculate range
-      const currentBlock = await publicClient.getBlockNumber();
-      const blockRange = 9999n; // Stay under 10k limit
-      const fromBlock = currentBlock > blockRange ? currentBlock - blockRange : 0n;
-      const toBlock = currentBlock; // Use specific block instead of "latest"
+      // Step 1: Get list of addresses that have ever held tokens from database
+      // The event indexer tracks all addresses that have received transfers
+      const dbBalances = dbQueries.getAllBalances();
+      console.log(`Found ${dbBalances.length} addresses in database`);
 
-      // Fetch split multiplier and Transfer events in parallel
-      const [splitMultiplier, logs] = await Promise.all([
-        publicClient.readContract({
-          address: contractAddress,
-          abi: [{ type: 'function', name: 'splitMultiplier', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' }],
-          functionName: 'splitMultiplier'
-        }),
-        publicClient.getLogs({
-          address: contractAddress,
-          event: {
-            type: 'event',
-            name: 'Transfer',
-            inputs: [
-              { name: 'from', type: 'address', indexed: true },
-              { name: 'to', type: 'address', indexed: true },
-              { name: 'value', type: 'uint256', indexed: false }
-            ]
-          },
-          fromBlock,
-          toBlock
-        })
-      ]);
-
-      // Calculate balances from events
-      const balances = new Map<string, bigint>();
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-
-      for (const log of logs) {
-        const from = (log.args.from as string).toLowerCase();
-        const to = (log.args.to as string).toLowerCase();
-        const value = log.args.value as bigint;
-
-        // Deduct from sender (skip zero address = minting)
-        if (from !== zeroAddress) {
-          const fromBalance = balances.get(from) || BigInt(0);
-          balances.set(from, fromBalance - value);
+      // Step 2: Query current balance from contract for each address
+      // This gives us real-time truth from the blockchain
+      const balancePromises = dbBalances.map(async (entry: any) => {
+        try {
+          const balance = await publicClient.readContract({
+            address: contractAddress,
+            abi: [{
+              type: 'function',
+              name: 'balanceOf',
+              inputs: [{ type: 'address' }],
+              outputs: [{ type: 'uint256' }],
+              stateMutability: 'view'
+            }],
+            functionName: 'balanceOf',
+            args: [entry.address as `0x${string}`]
+          });
+          return { address: entry.address, balance: balance as bigint };
+        } catch (error) {
+          console.error(`Error querying balance for ${entry.address}:`, error);
+          return { address: entry.address, balance: BigInt(0) };
         }
+      });
 
-        // Add to recipient
-        const toBalance = balances.get(to) || BigInt(0);
-        balances.set(to, toBalance + value);
-      }
+      const balanceResults = await Promise.all(balancePromises);
 
-      // Apply split multiplier to all balances (rawBalance * multiplier / 1e18)
-      const multiplier = splitMultiplier as bigint;
-      for (const [address, rawBalance] of balances.entries()) {
-        const adjustedBalance = (rawBalance * multiplier) / BigInt(1e18);
-        balances.set(address, adjustedBalance);
-      }
+      // Step 3: Get total supply from contract (source of truth)
+      const totalSupplyResult = await publicClient.readContract({
+        address: contractAddress,
+        abi: [{
+          type: 'function',
+          name: 'totalSupply',
+          inputs: [],
+          outputs: [{ type: 'uint256' }],
+          stateMutability: 'view'
+        }],
+        functionName: 'totalSupply'
+      });
+      const totalSupply = totalSupplyResult as bigint;
 
-      // Remove zero balances and calculate total
+      // Step 4: Build entries and calculate percentages
       const entries: Array<{ address: string; balance: string; percentage: number }> = [];
-      let totalSupply = BigInt(0);
 
-      for (const [address, balance] of balances.entries()) {
-        if (balance > 0) {
-          entries.push({ address, balance: balance.toString(), percentage: 0 });
-          totalSupply += balance;
+      for (const result of balanceResults) {
+        if (result.balance > 0) {
+          const percentage = totalSupply > 0
+            ? Number((result.balance * BigInt(10000)) / totalSupply) / 100
+            : 0;
+
+          entries.push({
+            address: result.address,
+            balance: result.balance.toString(),
+            percentage
+          });
         }
-      }
-
-      // Calculate percentages
-      for (const entry of entries) {
-        const balance = BigInt(entry.balance);
-        entry.percentage = totalSupply > 0
-          ? Number((balance * BigInt(10000)) / totalSupply) / 100
-          : 0;
       }
 
       // Sort by balance descending
@@ -95,6 +81,8 @@ export const createCapTableRouter = (blockchainService: BlockchainService) => {
         const balB = BigInt(b.balance);
         return balA > balB ? -1 : balA < balB ? 1 : 0;
       });
+
+      console.log(`Cap table: ${entries.length} holders, total supply: ${formatEther(totalSupply)}`);
 
       res.json({
         success: true,

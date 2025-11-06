@@ -209,13 +209,14 @@ export async function changeSymbol(data: SymbolChangeRequest): Promise<Transacti
 
 // Balance check
 export async function getBalance(address: string): Promise<{ balance: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/balance/${address}`, {
+  const response = await fetch(`${API_BASE_URL}/api/tokens/balance/${address}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
     },
   });
-  return handleResponse<{ balance: string }>(response);
+  const result = await handleResponse<{ success: boolean; data: { address: string; balance: string } }>(response);
+  return { balance: result.data.balance };
 }
 
 // Utility functions

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
+import { parseEther } from 'viem';
+import { polygonAmoy } from '../providers';
 import {
-  transferTokens,
   checkAllowlist,
   getAllowlist,
   getTokenInfo,
@@ -13,10 +14,16 @@ import {
   type TokenInfo,
   type AllowlistEntry
 } from '../lib/api';
+import { CHAIN_EQUITY_ABI } from '../lib/contract-abi';
 import styles from './TransferTokens.module.css';
 
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
+
 export default function TransferTokens() {
-  const { address: connectedAddress } = useAccount();
+  const { address: connectedAddress, chain, connector } = useAccount();
+  const chainId = useChainId();
+  const { data: hash, writeContract, isPending, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
   const [userBalance, setUserBalance] = useState<string>('0');
@@ -25,15 +32,42 @@ export default function TransferTokens() {
   const [amount, setAmount] = useState('');
   const [isAllowlisted, setIsAllowlisted] = useState(false);
   const [checkingAllowlist, setCheckingAllowlist] = useState(false);
-  const [processing, setProcessing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [txHash, setTxHash] = useState<string | null>(null);
+  const [actualChainId, setActualChainId] = useState<number | null>(null);
+
+  // Use wagmi's chainId directly - it's more reliable than WalletConnect provider
+  useEffect(() => {
+    if (chainId) {
+      setActualChainId(chainId);
+      console.log('Current chain ID:', chainId);
+    }
+  }, [chainId]);
 
   useEffect(() => {
     loadData();
   }, [connectedAddress]);
+
+  // Handle transaction confirmation
+  useEffect(() => {
+    if (isConfirmed && hash) {
+      setSuccess(`Successfully transferred ${formatNumber(amount)} tokens to ${formatAddress(recipient)}`);
+      setRecipient('');
+      setAmount('');
+      setIsAllowlisted(false);
+      setShowPreview(false);
+      loadData(); // Refresh balances
+    }
+  }, [isConfirmed, hash]);
+
+  // Handle write errors
+  useEffect(() => {
+    if (writeError) {
+      setError(writeError.message || 'Transaction failed');
+      setShowPreview(false);
+    }
+  }, [writeError]);
 
   const loadData = async () => {
     try {
@@ -126,35 +160,40 @@ export default function TransferTokens() {
       return;
     }
 
+    if (!CONTRACT_ADDRESS) {
+      setError('Contract address not configured');
+      return;
+    }
+
+    // Check if on correct chain using actual chain ID from wallet
+    const expectedChainId = 80002; // Polygon Amoy
+    const currentChainId = actualChainId || chainId;
+
+    if (currentChainId !== expectedChainId) {
+      const currentChainName = chain?.name || 'Unknown';
+      setError(
+        `Wrong network detected. Please switch to Polygon Amoy in your wallet.\n` +
+        `Expected Chain ID: ${expectedChainId}\n` +
+        `Current Chain: ${currentChainName} (ID: ${currentChainId || 'Unknown'})`
+      );
+      return;
+    }
+
     try {
-      setProcessing(true);
       setError(null);
       setSuccess(null);
-      setTxHash(null);
 
-      const result = await transferTokens({
-        from: connectedAddress,
-        to: recipient,
-        amount,
+      // Call the contract's transfer function directly with user's wallet
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: CHAIN_EQUITY_ABI,
+        functionName: 'transfer',
+        args: [recipient as `0x${string}`, parseEther(amount)],
+        chainId: currentChainId, // Use the current chain ID to prevent auto-switching
       });
-
-      if (result.success) {
-        setSuccess(`Successfully transferred ${formatNumber(amount)} tokens to ${formatAddress(recipient)}`);
-        setTxHash(result.transactionHash || null);
-        setRecipient('');
-        setAmount('');
-        setIsAllowlisted(false);
-        setShowPreview(false);
-        await loadData();
-      } else {
-        setError(result.error || 'Failed to transfer tokens');
-        setShowPreview(false);
-      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to transfer tokens');
+      setError(err instanceof Error ? err.message : 'Failed to initiate transfer');
       setShowPreview(false);
-    } finally {
-      setProcessing(false);
     }
   };
 
@@ -242,7 +281,7 @@ export default function TransferTokens() {
               placeholder="0x... or select from allowlist"
               value={recipient}
               onChange={(e) => handleRecipientChange(e.target.value)}
-              disabled={processing}
+              disabled={isPending || isConfirming}
               list="allowlist-addresses"
             />
             <datalist id="allowlist-addresses">
@@ -262,7 +301,7 @@ export default function TransferTokens() {
                       type="button"
                       className={styles.allowlistItem}
                       onClick={() => handleRecipientChange(entry.address)}
-                      disabled={processing}
+                      disabled={isPending || isConfirming}
                     >
                       {formatAddress(entry.address)}
                     </button>
@@ -286,7 +325,7 @@ export default function TransferTokens() {
                 placeholder="1000"
                 value={amount}
                 onChange={(e) => handleAmountChange(e.target.value)}
-                disabled={processing}
+                disabled={isPending || isConfirming}
                 min="0"
                 step="1"
               />
@@ -294,7 +333,7 @@ export default function TransferTokens() {
                 type="button"
                 className={styles.maxButton}
                 onClick={handleMaxClick}
-                disabled={processing || !userBalance || parseFloat(userBalance) === 0}
+                disabled={isPending || isConfirming || !userBalance || parseFloat(userBalance) === 0}
               >
                 Max
               </button>
@@ -302,7 +341,7 @@ export default function TransferTokens() {
           </div>
 
           {/* Transfer Preview */}
-          {showPreview && !processing && (
+          {showPreview && !isPending && !isConfirming && (
             <div className={styles.previewCard}>
               <div className={styles.previewTitle}>Transfer Preview</div>
               <div className={styles.previewItems}>
@@ -332,7 +371,7 @@ export default function TransferTokens() {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={processing || !isAllowlisted || !recipient || !amount || !connectedAddress}
+                  disabled={isPending || isConfirming || !isAllowlisted || !recipient || !amount || !connectedAddress}
                 >
                   Preview Transfer
                 </button>
@@ -345,10 +384,9 @@ export default function TransferTokens() {
                     setIsAllowlisted(false);
                     setError(null);
                     setSuccess(null);
-                    setTxHash(null);
                     setShowPreview(false);
                   }}
-                  disabled={processing}
+                  disabled={isPending || isConfirming}
                 >
                   Clear
                 </button>
@@ -356,17 +394,18 @@ export default function TransferTokens() {
             ) : (
               <>
                 <button
-                  type="submit"
+                  type="button"
                   className="btn btn-primary"
-                  disabled={processing}
+                  onClick={handleTransfer}
+                  disabled={isPending || isConfirming}
                 >
-                  {processing ? 'Transferring...' : 'Confirm Transfer'}
+                  {isPending ? 'Waiting for approval...' : isConfirming ? 'Confirming...' : 'Confirm Transfer'}
                 </button>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setShowPreview(false)}
-                  disabled={processing}
+                  disabled={isPending || isConfirming}
                 >
                   Edit
                 </button>
@@ -377,7 +416,7 @@ export default function TransferTokens() {
       </div>
 
       {/* Transaction Details */}
-      {txHash && (
+      {hash && isConfirmed && (
         <div className={styles.transactionCard}>
           <div className={styles.transactionHeader}>
             <div className={`${styles.transactionIcon} ${styles.success}`}>
@@ -392,7 +431,15 @@ export default function TransferTokens() {
           </div>
           <div className={styles.transactionHash}>
             <strong>Transaction Hash:</strong><br />
-            {txHash}
+            {hash}
+            <a
+              href={`https://amoy.polygonscan.com/tx/${hash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ marginLeft: '8px', color: '#3b82f6' }}
+            >
+              View on Explorer →
+            </a>
           </div>
         </div>
       )}

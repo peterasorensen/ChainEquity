@@ -167,5 +167,36 @@ export const createTokensRouter = (blockchainService: BlockchainService) => {
     }
   });
 
+  // GET /api/tokens/balance/:address - Get balance for an address
+  router.get('/balance/:address', async (req: Request, res: Response) => {
+    try {
+      const { address } = req.params;
+
+      // Validate address format
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid Ethereum address format'
+        } as ApiResponse);
+      }
+
+      const balance = await blockchainService.getBalance(address);
+
+      res.json({
+        success: true,
+        data: {
+          address,
+          balance
+        }
+      } as ApiResponse);
+    } catch (error: any) {
+      console.error('Error getting balance:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to get balance'
+      } as ApiResponse);
+    }
+  });
+
   return router;
 };

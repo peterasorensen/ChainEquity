@@ -71,7 +71,6 @@ export class DatabaseQueries {
     const stmt = this.db.prepare(`
       SELECT address, balance, timestamp
       FROM balances
-      WHERE balance != '0'
       ORDER BY CAST(balance AS INTEGER) DESC
     `);
     return stmt.all() as BalanceEntry[];
