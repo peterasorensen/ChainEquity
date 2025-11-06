@@ -2,6 +2,8 @@
 
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useState } from 'react';
+import { useAdmin } from '../lib/useAdmin';
+import { useAllowlist } from '../lib/useAllowlist';
 import styles from './Header.module.css';
 import { formatAddress } from '../lib/api';
 
@@ -10,6 +12,8 @@ export default function Header() {
   const { connect, connectors, error } = useConnect();
   const { disconnect } = useDisconnect();
   const [showConnectors, setShowConnectors] = useState(false);
+  const { isAdmin, loading: adminLoading } = useAdmin();
+  const { isAllowlisted, loading: allowlistLoading } = useAllowlist();
 
   const handleConnect = async (connectorId: string) => {
     try {
@@ -43,6 +47,40 @@ export default function Header() {
             <>
               <div className={styles.walletInfo}>
                 <span className={styles.walletAddress}>{formatAddress(address)}</span>
+                {!adminLoading && !allowlistLoading && (
+                  <>
+                    {isAdmin && (
+                      <span className="badge" style={{
+                        backgroundColor: '#10b981',
+                        color: 'white',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        marginLeft: '0.5rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}>
+                        Admin
+                      </span>
+                    )}
+                    {!isAdmin && isAllowlisted && (
+                      <span className="badge" style={{
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        marginLeft: '0.5rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}>
+                        Allowlisted
+                      </span>
+                    )}
+                  </>
+                )}
               </div>
               <button
                 className="btn btn-secondary btn-sm"

@@ -168,6 +168,37 @@ export class BlockchainService {
     }
   }
 
+  async transferTokens(from: string, to: string, amount: string): Promise<Hash> {
+    console.log(`Transferring ${amount} tokens from ${from} to ${to}...`);
+
+    try {
+      // Convert amount to wei (assuming 18 decimals)
+      const amountWei = parseEther(amount);
+
+      // Note: Since we're using the relayer model, the relayer (msg.sender) must hold the tokens
+      // For a true peer-to-peer transfer, we would use transferFrom with approvals
+      // In this implementation, the relayer transfers from its own balance to the recipient
+      const { request } = await this.publicClient.simulateContract({
+        address: this.contractAddress,
+        abi: CHAIN_EQUITY_ABI,
+        functionName: 'transfer',
+        args: [to as Address, amountWei],
+        account: this.account
+      });
+
+      const hash = await this.walletClient.writeContract(request);
+      console.log(`Transaction sent: ${hash}`);
+
+      const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
+      console.log(`Transaction confirmed in block ${receipt.blockNumber}`);
+
+      return hash;
+    } catch (error: any) {
+      console.error('Error transferring tokens:', error);
+      throw new Error(`Failed to transfer tokens: ${error.message}`);
+    }
+  }
+
   async getBalance(address: string): Promise<string> {
     try {
       const balance = await this.publicClient.readContract({

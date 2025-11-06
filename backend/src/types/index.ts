@@ -46,6 +46,12 @@ export interface MintRequest {
   amount: string;
 }
 
+export interface TransferRequest {
+  from: string;
+  to: string;
+  amount: string;
+}
+
 export interface AllowlistRequest {
   address: string;
 }

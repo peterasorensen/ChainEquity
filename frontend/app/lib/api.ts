@@ -40,6 +40,12 @@ export interface MintRequest {
   amount: string;
 }
 
+export interface TransferRequest {
+  from: string;
+  to: string;
+  amount: string;
+}
+
 export interface SplitRequest {
   multiplier: number;
 }
@@ -147,6 +153,23 @@ export async function mintTokens(data: MintRequest): Promise<TransactionResponse
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ to: data.recipient, amount: data.amount }),
+  });
+  const result = await handleResponse<{ success: boolean; data: any }>(response);
+  return {
+    success: result.success,
+    transactionHash: result.data.transactionHash,
+    message: result.data.message
+  };
+}
+
+// Transfer API
+export async function transferTokens(data: TransferRequest): Promise<TransactionResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/tokens/transfer`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ from: data.from, to: data.to, amount: data.amount }),
   });
   const result = await handleResponse<{ success: boolean; data: any }>(response);
   return {
