@@ -199,9 +199,9 @@ export class BlockchainService {
     }
   }
 
-  async getTokenInfo(): Promise<{ name: string; symbol: string; totalSupply: string }> {
+  async getTokenInfo(): Promise<{ name: string; symbol: string; totalSupply: string; currentMultiplier: number }> {
     try {
-      const [name, symbol, totalSupply] = await Promise.all([
+      const [name, symbol, totalSupply, splitMultiplier] = await Promise.all([
         this.publicClient.readContract({
           address: this.contractAddress,
           abi: CHAIN_EQUITY_ABI,
@@ -216,13 +216,22 @@ export class BlockchainService {
           address: this.contractAddress,
           abi: CHAIN_EQUITY_ABI,
           functionName: 'totalSupply'
+        }),
+        this.publicClient.readContract({
+          address: this.contractAddress,
+          abi: CHAIN_EQUITY_ABI,
+          functionName: 'splitMultiplier'
         })
       ]);
+
+      // Convert multiplier from 1e18 to decimal (e.g., 2e18 = 2.0x)
+      const multiplierValue = Number(splitMultiplier as bigint) / 1e18;
 
       return {
         name: name as string,
         symbol: symbol as string,
-        totalSupply: formatEther(totalSupply as bigint)
+        totalSupply: formatEther(totalSupply as bigint),
+        currentMultiplier: multiplierValue
       };
     } catch (error: any) {
       console.error('Error getting token info:', error);
@@ -257,14 +266,15 @@ export class BlockchainService {
   }
 
   async changeSymbol(newName: string, newSymbol: string): Promise<Hash> {
-    console.log(`Changing symbol to ${newSymbol} (${newName})...`);
+    console.log(`Changing symbol to ${newSymbol}...`);
+    // Note: Contract only supports changing symbol, not name
 
     try {
       const { request } = await this.publicClient.simulateContract({
         address: this.contractAddress,
         abi: CHAIN_EQUITY_ABI,
         functionName: 'changeSymbol',
-        args: [newName, newSymbol],
+        args: [newSymbol], // Only pass newSymbol
         account: this.account
       });
 

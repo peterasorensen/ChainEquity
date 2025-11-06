@@ -139,7 +139,7 @@ const mountRoutes = () => {
   app.use('/api/wallets', createWalletsRouter(blockchainService));
   app.use('/api/tokens', createTokensRouter(blockchainService));
   app.use('/api/corporate-actions', createCorporateActionsRouter(blockchainService));
-  app.use('/api/cap-table', createCapTableRouter(dbQueries));
+  app.use('/api/cap-table', createCapTableRouter(blockchainService));
   app.use('/api/allowlist', createAllowlistRouter(blockchainService, dbQueries));
   app.use('/api/relayer', createRelayerRouter(blockchainService));
   console.log('API routes mounted');
