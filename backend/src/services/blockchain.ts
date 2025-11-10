@@ -144,14 +144,27 @@ export class BlockchainService {
     console.log(`Minting ${amount} tokens to ${to}...`);
 
     try {
+      // Get the current split multiplier
+      const splitMultiplier = await this.publicClient.readContract({
+        address: this.contractAddress,
+        abi: CHAIN_EQUITY_ABI,
+        functionName: 'splitMultiplier'
+      }) as bigint;
+
       // Convert amount to wei (assuming 18 decimals)
       const amountWei = parseEther(amount);
+
+      // Divide by the multiplier to get the base amount
+      // This ensures the user receives the expected display amount after multiplier is applied
+      const baseAmount = (amountWei * BigInt(1e18)) / splitMultiplier;
+
+      console.log(`Split multiplier: ${splitMultiplier}, Base amount: ${baseAmount}`);
 
       const { request } = await this.publicClient.simulateContract({
         address: this.contractAddress,
         abi: CHAIN_EQUITY_ABI,
         functionName: 'mint',
-        args: [to as Address, amountWei],
+        args: [to as Address, baseAmount],
         account: this.account
       });
 
