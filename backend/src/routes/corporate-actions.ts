@@ -29,7 +29,7 @@ export const createCorporateActionsRouter = (blockchainService: BlockchainServic
       // For a multiplier-for-1 split (e.g., 7-for-1), pass numerator=multiplier, denominator=1
       const txHash = await blockchainService.executeStockSplit(multiplier, 1);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           transactionHash: txHash,
@@ -39,7 +39,7 @@ export const createCorporateActionsRouter = (blockchainService: BlockchainServic
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error executing stock split:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to execute stock split'
       } as ApiResponse);
@@ -76,7 +76,7 @@ export const createCorporateActionsRouter = (blockchainService: BlockchainServic
       console.log(`API: Changing token symbol to ${newSymbol} (${newName})`);
       const txHash = await blockchainService.changeSymbol(newName, newSymbol);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           transactionHash: txHash,
@@ -87,7 +87,7 @@ export const createCorporateActionsRouter = (blockchainService: BlockchainServic
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error changing symbol:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to change symbol'
       } as ApiResponse);

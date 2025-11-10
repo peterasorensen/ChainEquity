@@ -30,7 +30,7 @@ export const createAllowlistRouter = (
       // Also verify against blockchain for consistency
       const blockchainStatus = await blockchainService.checkAllowlistStatus(address);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           address,
@@ -44,7 +44,7 @@ export const createAllowlistRouter = (
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error checking allowlist status:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to check allowlist status'
       } as ApiResponse);
@@ -52,7 +52,7 @@ export const createAllowlistRouter = (
   });
 
   // GET /api/allowlist - Get all allowlisted addresses
-  router.get('/', async (req: Request, res: Response) => {
+  router.get('/', async (_req: Request, res: Response) => {
     try {
       console.log('API: Getting all allowlisted addresses');
 
@@ -62,7 +62,7 @@ export const createAllowlistRouter = (
       // For now, return database data
       // In a production system, we'd query all Transfer/Mint events to find unique holders
       // and check each one against the allowlist contract
-      res.json({
+      return res.json({
         success: true,
         data: {
           count: dbAllowlisted.length,
@@ -71,7 +71,7 @@ export const createAllowlistRouter = (
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error getting allowlist:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to get allowlist'
       } as ApiResponse);

@@ -28,7 +28,7 @@ export const createRelayerRouter = (blockchainService: BlockchainService) => {
       console.log('API: Submitting pre-signed transaction');
       const txHash = await blockchainService.submitSignedTransaction(signedTransaction as any);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           transactionHash: txHash,
@@ -37,7 +37,7 @@ export const createRelayerRouter = (blockchainService: BlockchainService) => {
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error submitting transaction:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to submit transaction'
       } as ApiResponse);
@@ -45,11 +45,11 @@ export const createRelayerRouter = (blockchainService: BlockchainService) => {
   });
 
   // GET /api/relayer/address - Get relayer address
-  router.get('/address', (req: Request, res: Response) => {
+  router.get('/address', (_req: Request, res: Response) => {
     try {
       const address = blockchainService.getRelayerAddress();
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           relayerAddress: address,
@@ -58,7 +58,7 @@ export const createRelayerRouter = (blockchainService: BlockchainService) => {
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error getting relayer address:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to get relayer address'
       } as ApiResponse);

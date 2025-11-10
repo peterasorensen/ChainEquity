@@ -7,7 +7,7 @@ export const createCapTableRouter = (blockchainService: BlockchainService, dbQue
   const router = Router();
 
   // GET /api/cap-table - Get cap table using hybrid approach
-  router.get('/', async (req: Request, res: Response) => {
+  router.get('/', async (_req: Request, res: Response) => {
     try {
       console.log('API: Getting cap table from blockchain (hybrid approach)');
 
@@ -84,7 +84,7 @@ export const createCapTableRouter = (blockchainService: BlockchainService, dbQue
 
       console.log(`Cap table: ${entries.length} holders, total supply: ${formatEther(totalSupply)}`);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           totalShares: totalSupply.toString(),
@@ -94,7 +94,7 @@ export const createCapTableRouter = (blockchainService: BlockchainService, dbQue
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error getting cap table:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to get cap table'
       } as ApiResponse);
@@ -104,7 +104,7 @@ export const createCapTableRouter = (blockchainService: BlockchainService, dbQue
   // GET /api/cap-table/export - Export cap table as CSV
   router.get('/export', async (req: Request, res: Response) => {
     try {
-      const { blockNumber } = req.query as unknown as CapTableQuery;
+      const { blockNumber } = req.query as { blockNumber?: string };
 
       let blockNum: number | undefined;
       if (blockNumber !== undefined) {
@@ -132,10 +132,10 @@ export const createCapTableRouter = (blockchainService: BlockchainService, dbQue
 
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.send(csv);
+      return res.send(csv);
     } catch (error: any) {
       console.error('Error exporting cap table:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to export cap table'
       } as ApiResponse);

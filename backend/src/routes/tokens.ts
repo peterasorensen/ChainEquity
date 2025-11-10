@@ -37,7 +37,7 @@ export const createTokensRouter = (blockchainService: BlockchainService) => {
       console.log(`API: Minting ${amount} tokens to ${to}`);
       const txHash = await blockchainService.mintTokens(to, amount);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           transactionHash: txHash,
@@ -48,7 +48,7 @@ export const createTokensRouter = (blockchainService: BlockchainService) => {
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error minting tokens:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to mint tokens'
       } as ApiResponse);
@@ -130,7 +130,7 @@ export const createTokensRouter = (blockchainService: BlockchainService) => {
       console.log(`API: Transferring ${amount} tokens from ${from} to ${to}`);
       const txHash = await blockchainService.transferTokens(from, to, amount);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           transactionHash: txHash,
@@ -142,7 +142,7 @@ export const createTokensRouter = (blockchainService: BlockchainService) => {
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error transferring tokens:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to transfer tokens'
       } as ApiResponse);
@@ -150,17 +150,17 @@ export const createTokensRouter = (blockchainService: BlockchainService) => {
   });
 
   // GET /api/tokens/info - Get token information
-  router.get('/info', async (req: Request, res: Response) => {
+  router.get('/info', async (_req: Request, res: Response) => {
     try {
       const info = await blockchainService.getTokenInfo();
 
-      res.json({
+      return res.json({
         success: true,
         data: info
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error getting token info:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to get token info'
       } as ApiResponse);
@@ -182,7 +182,7 @@ export const createTokensRouter = (blockchainService: BlockchainService) => {
 
       const balance = await blockchainService.getBalance(address);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           address,
@@ -191,7 +191,7 @@ export const createTokensRouter = (blockchainService: BlockchainService) => {
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error getting balance:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to get balance'
       } as ApiResponse);

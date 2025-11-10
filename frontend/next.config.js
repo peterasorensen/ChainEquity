@@ -3,6 +3,8 @@ const path = require('path');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Add empty turbopack config to silence warnings for now
+  turbopack: {},
   webpack: (config, { isServer }) => {
     // Fix for MetaMask SDK and WalletConnect dependencies
     config.resolve.fallback = {

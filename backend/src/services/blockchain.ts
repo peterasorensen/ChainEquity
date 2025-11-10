@@ -309,7 +309,7 @@ export class BlockchainService {
     }
   }
 
-  async changeSymbol(newName: string, newSymbol: string): Promise<Hash> {
+  async changeSymbol(_newName: string, newSymbol: string): Promise<Hash> {
     console.log(`Changing symbol to ${newSymbol}...`);
     // Note: Contract only supports changing symbol, not name
 

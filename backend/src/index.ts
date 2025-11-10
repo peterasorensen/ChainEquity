@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { initializeDatabase, getDatabase, closeDatabase } from './db/init';
+import { initializeDatabase, closeDatabase } from './db/init';
 import { DatabaseQueries } from './db/queries';
 import { BlockchainService } from './services/blockchain';
 import { EventIndexer } from './services/indexer';
@@ -42,7 +42,7 @@ app.use(cors());
 app.use(express.json());
 
 // Request logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
@@ -84,7 +84,7 @@ const initializeServices = async () => {
 };
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   const indexerStatus = indexer.getStatus();
   res.json({
     status: 'healthy',
@@ -99,7 +99,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Root endpoint
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
   res.json({
     name: 'ChainEquity Backend API',
     version: '1.0.0',
@@ -145,7 +145,7 @@ const mountRoutes = () => {
   console.log('API routes mounted');
 
   // Error handling middleware (must be after routes)
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error('Unhandled error:', err);
     res.status(500).json({
       success: false,
@@ -154,7 +154,7 @@ const mountRoutes = () => {
   });
 
   // 404 handler (must be last)
-  app.use((req: Request, res: Response) => {
+  app.use((_req: Request, res: Response) => {
     res.status(404).json({
       success: false,
       error: 'Endpoint not found'

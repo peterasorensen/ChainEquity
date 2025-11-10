@@ -1,7 +1,7 @@
 import { BlockchainService } from './blockchain';
 import { DatabaseQueries } from '../db/queries';
 import { CHAIN_EQUITY_ABI } from '../utils/contract-abi';
-import { parseAbiItem, Log, decodeEventLog } from 'viem';
+import { Log, decodeEventLog } from 'viem';
 
 export class EventIndexer {
   private isRunning = false;
@@ -58,7 +58,8 @@ export class EventIndexer {
     console.log('Event indexer stopped');
   }
 
-  // Index historical blocks
+  // Index historical blocks (currently unused, but kept for future use)
+  // @ts-ignore - Method is kept for potential future historical indexing needs
   private async indexHistoricalBlocks(fromBlock: number, toBlock: number) {
     if (fromBlock >= toBlock) {
       return;
@@ -221,7 +222,7 @@ export class EventIndexer {
   }
 
   // Handle Mint events
-  private async handleMint(args: any, log: Log, blockNumber: number, timestamp: number) {
+  private async handleMint(args: any, _log: Log, _blockNumber: number, _timestamp: number) {
     const to = (args.to as string).toLowerCase();
     const amount = args.amount as bigint;
 
@@ -232,7 +233,7 @@ export class EventIndexer {
   }
 
   // Handle AllowlistUpdated events
-  private async handleAllowlistUpdate(args: any, blockNumber: number, timestamp: number) {
+  private async handleAllowlistUpdate(args: any, _blockNumber: number, timestamp: number) {
     const account = (args.account as string).toLowerCase();
     const approved = args.status as boolean; // Field is named 'status' in the contract event
 

@@ -28,7 +28,7 @@ export const createWalletsRouter = (blockchainService: BlockchainService) => {
       console.log(`API: Approving wallet ${address}`);
       const txHash = await blockchainService.addToAllowlist(address);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           transactionHash: txHash,
@@ -38,7 +38,7 @@ export const createWalletsRouter = (blockchainService: BlockchainService) => {
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error approving wallet:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to approve wallet'
       } as ApiResponse);
@@ -68,7 +68,7 @@ export const createWalletsRouter = (blockchainService: BlockchainService) => {
       console.log(`API: Revoking wallet ${address}`);
       const txHash = await blockchainService.removeFromAllowlist(address);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           transactionHash: txHash,
@@ -78,7 +78,7 @@ export const createWalletsRouter = (blockchainService: BlockchainService) => {
       } as ApiResponse);
     } catch (error: any) {
       console.error('Error revoking wallet:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to revoke wallet'
       } as ApiResponse);

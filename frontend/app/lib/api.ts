@@ -12,14 +12,24 @@ export interface ShareClass {
   amountRaised: string;
 }
 
+export interface CapTableEntry {
+  address: string;
+  balance: string;
+  percentage: number;
+}
+
 export interface CapTableData {
-  totalSupply: string;
-  shareClasses: ShareClass[];
-  ownershipData: {
+  totalShares: string;
+  holders: number;
+  entries: CapTableEntry[];
+  // Legacy fields for backward compatibility
+  totalSupply?: string;
+  shareClasses?: ShareClass[];
+  ownershipData?: {
     name: string;
     value: number;
   }[];
-  totalRaised: string;
+  totalRaised?: string;
 }
 
 export interface AllowlistEntry {
