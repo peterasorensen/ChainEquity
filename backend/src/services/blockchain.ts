@@ -243,6 +243,21 @@ export class BlockchainService {
     }
   }
 
+  async getCurrentMultiplier(): Promise<bigint> {
+    try {
+      const splitMultiplier = await this.publicClient.readContract({
+        address: this.contractAddress,
+        abi: CHAIN_EQUITY_ABI,
+        functionName: 'splitMultiplier'
+      });
+
+      return splitMultiplier as bigint;
+    } catch (error: any) {
+      console.error('Error getting current multiplier:', error);
+      throw new Error(`Failed to get current multiplier: ${error.message}`);
+    }
+  }
+
   async getTokenInfo(): Promise<{ name: string; symbol: string; totalSupply: string; currentMultiplier: number }> {
     try {
       const [name, symbol, totalSupply, splitMultiplier] = await Promise.all([

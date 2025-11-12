@@ -183,12 +183,12 @@ export class DatabaseQueries {
   }
 
   // Cap table operations
-  getCapTable(blockNumber?: number): CapTableEntry[] {
+  getCapTable(blockNumber?: number, currentMultiplier?: bigint): CapTableEntry[] {
     let balances: BalanceEntry[];
 
     if (blockNumber !== undefined) {
       // For historical cap table, we need to reconstruct balances at that block
-      balances = this.getHistoricalBalances(blockNumber);
+      balances = this.getHistoricalBalances(blockNumber, currentMultiplier);
     } else {
       // Current cap table
       balances = this.getAllBalances();
@@ -214,7 +214,7 @@ export class DatabaseQueries {
     });
   }
 
-  private getHistoricalBalances(blockNumber: number): BalanceEntry[] {
+  private getHistoricalBalances(blockNumber: number, currentMultiplier?: bigint): BalanceEntry[] {
     // Get all transactions up to and including the specified block
     const stmt = this.db.prepare(`
       SELECT from_addr, to_addr, amount
@@ -247,33 +247,14 @@ export class DatabaseQueries {
       }
     }
 
-    // Get all stock splits that occurred AFTER the queried block
-    // These need to be applied retroactively to the historical balances
-    const splitsStmt = this.db.prepare(`
-      SELECT data, block_number
-      FROM corporate_actions
-      WHERE type = 'split' AND block_number > ?
-      ORDER BY block_number ASC
-    `);
-
-    const splits = splitsStmt.all(blockNumber) as Array<{
-      data: string;
-      block_number: number;
-    }>;
-
-    // Calculate cumulative multiplier from all splits after the queried block
-    let cumulativeMultiplier = BigInt(1);
-    for (const split of splits) {
-      const splitData = JSON.parse(split.data);
-      const multiplier = BigInt(splitData.multiplier);
-      cumulativeMultiplier *= multiplier;
-    }
+    // Use the current multiplier from the contract if provided, otherwise default to 1
+    const multiplier = currentMultiplier || BigInt(1e18);
 
     // Convert to array and filter out zero balances
     const result: BalanceEntry[] = [];
     for (const [address, balance] of balances.entries()) {
-      // Apply cumulative multiplier to get the balance in today's terms
-      const adjustedBalance = balance * cumulativeMultiplier;
+      // Apply current multiplier to get the balance in today's terms
+      const adjustedBalance = balance * multiplier / BigInt(1e18);
 
       if (adjustedBalance > BigInt(0)) {
         result.push({

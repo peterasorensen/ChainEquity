@@ -15,7 +15,7 @@ export interface TransactionEntryWithMultiplier extends TransactionEntry {
   multiplier: string;
 }
 
-export const createTransactionsRouter = (dbQueries: any) => {
+export const createTransactionsRouter = (dbQueries: any, blockchainService?: any) => {
   const router = Router();
 
   // GET /api/transactions - Get recent transactions
@@ -40,31 +40,39 @@ export const createTransactionsRouter = (dbQueries: any) => {
         } as ApiResponse);
       }
 
-      // Get all transactions from database, sorted by timestamp descending
+      // Get all transactions from database
       const allTransactions = dbQueries.getAllTransactions();
 
       // Apply pagination
       const total = allTransactions.length;
       const paginatedTransactions = allTransactions
-        .sort((a: TransactionEntry, b: TransactionEntry) => b.timestamp - a.timestamp)
+        .sort((a: TransactionEntry, b: TransactionEntry) => {
+          // Sort by block number descending (most recent first)
+          // If same block, sort by timestamp descending
+          if (b.block_number !== a.block_number) {
+            return b.block_number - a.block_number;
+          }
+          return b.timestamp - a.timestamp;
+        })
         .slice(offsetNum, offsetNum + limitNum);
+
+      // Get current multiplier from blockchain contract
+      const multiplier = blockchainService ? await blockchainService.getCurrentMultiplier() : BigInt(1e18);
 
       // Apply multiplier adjustments to each transaction
       const adjustedTransactions: TransactionEntryWithMultiplier[] = paginatedTransactions.map((tx: TransactionEntry) => {
-        // Get the cumulative multiplier from splits that occurred after this transaction
-        const multiplier = dbQueries.getCumulativeMultiplierAfterBlock(tx.block_number);
         const originalAmount = BigInt(tx.amount);
-        const adjustedAmount = originalAmount * multiplier;
+        const adjustedAmount = originalAmount * multiplier / BigInt(1e18); // Divide by 1e18 since multiplier is scaled
 
         // Log for debugging
-        if (multiplier > BigInt(1)) {
+        if (multiplier > BigInt(1e18)) {
           console.log(`Transaction at block ${tx.block_number}: multiplier=${multiplier}, original=${originalAmount}, adjusted=${adjustedAmount}`);
         }
 
         return {
           ...tx,
           adjustedAmount: adjustedAmount.toString(),
-          multiplier: multiplier.toString()
+          multiplier: (Number(multiplier) / 1e18).toString()
         };
       });
 
@@ -123,25 +131,33 @@ export const createTransactionsRouter = (dbQueries: any) => {
       // Apply pagination
       const total = transactions.length;
       const paginatedTransactions = transactions
-        .sort((a: TransactionEntry, b: TransactionEntry) => b.timestamp - a.timestamp)
+        .sort((a: TransactionEntry, b: TransactionEntry) => {
+          // Sort by block number descending (most recent first)
+          // If same block, sort by timestamp descending
+          if (b.block_number !== a.block_number) {
+            return b.block_number - a.block_number;
+          }
+          return b.timestamp - a.timestamp;
+        })
         .slice(offsetNum, offsetNum + limitNum);
+
+      // Get current multiplier from blockchain contract
+      const multiplier = blockchainService ? await blockchainService.getCurrentMultiplier() : BigInt(1e18);
 
       // Apply multiplier adjustments to each transaction
       const adjustedTransactions: TransactionEntryWithMultiplier[] = paginatedTransactions.map((tx: TransactionEntry) => {
-        // Get the cumulative multiplier from splits that occurred after this transaction
-        const multiplier = dbQueries.getCumulativeMultiplierAfterBlock(tx.block_number);
         const originalAmount = BigInt(tx.amount);
-        const adjustedAmount = originalAmount * multiplier;
+        const adjustedAmount = originalAmount * multiplier / BigInt(1e18); // Divide by 1e18 since multiplier is scaled
 
         // Log for debugging
-        if (multiplier > BigInt(1)) {
+        if (multiplier > BigInt(1e18)) {
           console.log(`Transaction at block ${tx.block_number}: multiplier=${multiplier}, original=${originalAmount}, adjusted=${adjustedAmount}`);
         }
 
         return {
           ...tx,
           adjustedAmount: adjustedAmount.toString(),
-          multiplier: multiplier.toString()
+          multiplier: (Number(multiplier) / 1e18).toString()
         };
       });
 

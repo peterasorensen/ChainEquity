@@ -147,7 +147,7 @@ const mountRoutes = () => {
   app.use('/api/cap-table', createCapTableRouter(blockchainService, dbQueries));
   app.use('/api/allowlist', createAllowlistRouter(blockchainService, dbQueries));
   app.use('/api/relayer', createRelayerRouter(blockchainService));
-  app.use('/api/transactions', createTransactionsRouter(dbQueries));
+  app.use('/api/transactions', createTransactionsRouter(dbQueries, blockchainService));
   console.log('API routes mounted');
 
   // Error handling middleware (must be after routes)

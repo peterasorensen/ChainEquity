@@ -31,9 +31,10 @@ export const createCapTableRouter = (blockchainService: BlockchainService, dbQue
       let balanceResults: Array<{ address: string; balance: bigint }>;
 
       if (blockNum !== undefined) {
-        // For historical queries, use database reconstruction
+        // For historical queries, use database reconstruction with current multiplier
         console.log(`Reconstructing balances at block ${blockNum}`);
-        const historicalBalances = dbQueries.getCapTable(blockNum);
+        const currentMultiplier = await blockchainService.getCurrentMultiplier();
+        const historicalBalances = dbQueries.getCapTable(blockNum, currentMultiplier);
         balanceResults = historicalBalances.map((entry: any) => ({
           address: entry.address,
           balance: BigInt(entry.balance)
