@@ -4,7 +4,7 @@
 
 .controls {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 2rem;
   padding: 1.5rem;
@@ -13,32 +13,20 @@
   border: 1px solid var(--color-border);
 }
 
-.queryMode {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.historicalControls {
-  display: flex;
-  align-items: end;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.inputGroup {
+.filterGroup {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   min-width: 200px;
 }
 
-.inputLabel {
+.filterLabel {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-text-primary);
 }
 
-.inputField {
+.filterInput {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -47,57 +35,24 @@
   font-size: 0.875rem;
 }
 
-.inputField:focus {
+.filterInput:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
-.historicalNote {
-  padding: 0.75rem;
-  background-color: var(--color-bg-secondary);
+.filterSelect {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-}
-
-.chartsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.chartCard {
-  background-color: var(--color-bg-primary);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
-  padding: 1.5rem;
-  min-height: 400px;
-}
-
-.chartHeader {
-  margin-bottom: 1.5rem;
-}
-
-.chartTitle {
-  font-size: 1rem;
-  font-weight: 600;
+  background-color: var(--color-bg-secondary);
   color: var(--color-text-primary);
-  margin-bottom: 0.25rem;
-}
-
-.chartSubtitle {
   font-size: 0.875rem;
-  color: var(--color-text-secondary);
-  margin-bottom: 0;
 }
 
-.chartContainer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 300px;
+.filterSelect:focus {
+  outline: none;
+  border-color: var(--color-primary);
 }
 
 .statsGrid {
@@ -111,15 +66,13 @@
   background-color: var(--color-bg-primary);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  padding: 1.25rem;
+  padding: 1.5rem;
+  text-align: center;
 }
 
 .statLabel {
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.875rem;
   color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
 }
 
@@ -127,7 +80,6 @@
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--color-text-primary);
-  margin-bottom: 0;
 }
 
 .tableCard {
@@ -141,35 +93,83 @@
 .tableHeader {
   padding: 1.5rem;
   border-bottom: 1px solid var(--color-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
 }
 
 .tableTitle {
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--color-text-primary);
-  margin-bottom: 0;
-}
-
-.exportButtons {
-  display: flex;
-  gap: 0.5rem;
+  margin: 0;
 }
 
 .tableWrapper {
   overflow-x: auto;
 }
 
-.loading {
+.tableWrapper table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tableWrapper th,
+.tableWrapper td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tableWrapper th {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.tableWrapper td {
+  color: var(--color-text-primary);
+}
+
+.tableWrapper tr:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.txLink {
+  color: var(--color-primary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+}
+
+.txLink:hover {
+  text-decoration: underline;
+}
+
+.pagination {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4rem 2rem;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding: 1rem;
+}
+
+.pageInfo {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0 1rem;
+}
+
+.loading {
+  display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
   gap: 1rem;
 }
 
@@ -179,32 +179,45 @@
 }
 
 .error {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
   padding: 1rem;
-  background-color: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
   border-radius: var(--radius-md);
-  margin-bottom: 1.5rem;
-  font-size: 0.875rem;
-}
-
-.legendItem {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: var(--color-text-primary);
-}
-
-.legendColor {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-error-border);
+  margin-bottom: 1rem;
 }
 
 .noData {
   text-align: center;
-  padding: 3rem 2rem;
   color: var(--color-text-secondary);
+  padding: 3rem;
   font-size: 0.875rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .controls {
+    flex-direction: column;
+  }
+
+  .filterGroup {
+    min-width: auto;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+  }
+
+  .tableWrapper {
+    font-size: 0.75rem;
+  }
+
+  .tableWrapper th,
+  .tableWrapper td {
+    padding: 0.5rem;
+  }
 }

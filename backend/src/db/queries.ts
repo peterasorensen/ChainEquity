@@ -103,6 +103,15 @@ export class DatabaseQueries {
     return stmt.all(addr, addr) as TransactionEntry[];
   }
 
+  getAllTransactions(): TransactionEntry[] {
+    const stmt = this.db.prepare(`
+      SELECT hash, from_addr, to_addr, amount, block_number, timestamp
+      FROM transactions
+      ORDER BY block_number DESC, timestamp DESC
+    `);
+    return stmt.all() as TransactionEntry[];
+  }
+
   getTransactionsByBlock(blockNumber: number): TransactionEntry[] {
     const stmt = this.db.prepare(`
       SELECT hash, from_addr, to_addr, amount, block_number, timestamp
@@ -129,6 +138,48 @@ export class DatabaseQueries {
       ORDER BY block_number DESC
     `);
     return stmt.all() as CorporateActionEntry[];
+  }
+
+  // Get cumulative multiplier from all stock splits
+  getCumulativeMultiplier(): bigint {
+    const stmt = this.db.prepare(`
+      SELECT data
+      FROM corporate_actions
+      WHERE type = 'split'
+      ORDER BY block_number ASC
+    `);
+
+    const splits = stmt.all() as Array<{ data: string }>;
+
+    let cumulativeMultiplier = BigInt(1);
+    for (const split of splits) {
+      const splitData = JSON.parse(split.data);
+      const multiplier = BigInt(splitData.multiplier);
+      cumulativeMultiplier *= multiplier;
+    }
+
+    return cumulativeMultiplier;
+  }
+
+  // Get cumulative multiplier from stock splits that occurred after a specific block
+  getCumulativeMultiplierAfterBlock(blockNumber: number): bigint {
+    const stmt = this.db.prepare(`
+      SELECT data
+      FROM corporate_actions
+      WHERE type = 'split' AND block_number > ?
+      ORDER BY block_number ASC
+    `);
+
+    const splits = stmt.all(blockNumber) as Array<{ data: string }>;
+
+    let cumulativeMultiplier = BigInt(1);
+    for (const split of splits) {
+      const splitData = JSON.parse(split.data);
+      const multiplier = BigInt(splitData.multiplier);
+      cumulativeMultiplier *= multiplier;
+    }
+
+    return cumulativeMultiplier;
   }
 
   // Cap table operations
@@ -196,13 +247,38 @@ export class DatabaseQueries {
       }
     }
 
+    // Get all stock splits that occurred AFTER the queried block
+    // These need to be applied retroactively to the historical balances
+    const splitsStmt = this.db.prepare(`
+      SELECT data, block_number
+      FROM corporate_actions
+      WHERE type = 'split' AND block_number > ?
+      ORDER BY block_number ASC
+    `);
+
+    const splits = splitsStmt.all(blockNumber) as Array<{
+      data: string;
+      block_number: number;
+    }>;
+
+    // Calculate cumulative multiplier from all splits after the queried block
+    let cumulativeMultiplier = BigInt(1);
+    for (const split of splits) {
+      const splitData = JSON.parse(split.data);
+      const multiplier = BigInt(splitData.multiplier);
+      cumulativeMultiplier *= multiplier;
+    }
+
     // Convert to array and filter out zero balances
     const result: BalanceEntry[] = [];
     for (const [address, balance] of balances.entries()) {
-      if (balance > BigInt(0)) {
+      // Apply cumulative multiplier to get the balance in today's terms
+      const adjustedBalance = balance * cumulativeMultiplier;
+
+      if (adjustedBalance > BigInt(0)) {
         result.push({
           address,
-          balance: balance.toString(),
+          balance: adjustedBalance.toString(),
           timestamp: Date.now() // Historical reconstruction
         });
       }

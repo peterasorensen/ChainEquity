@@ -65,6 +65,25 @@ export interface SymbolChangeRequest {
   newSymbol: string;
 }
 
+export interface TransactionEntry {
+  hash: string;
+  from_addr: string;
+  to_addr: string;
+  amount: string;
+  block_number: number;
+  timestamp: number;
+  adjustedAmount?: string;
+  multiplier?: string;
+}
+
+export interface TransactionsData {
+  transactions: TransactionEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+  address?: string;
+}
+
 export interface TransactionResponse {
   success: boolean;
   transactionHash?: string;
@@ -82,8 +101,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 // Cap Table API
-export async function getCapTableData(): Promise<CapTableData> {
-  const response = await fetch(`${API_BASE_URL}/api/cap-table`, {
+export async function getCapTableData(blockNumber?: number): Promise<CapTableData> {
+  const params = blockNumber !== undefined ? `?blockNumber=${blockNumber}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/cap-table${params}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -227,6 +247,39 @@ export async function getBalance(address: string): Promise<{ balance: string }> 
   });
   const result = await handleResponse<{ success: boolean; data: { address: string; balance: string } }>(response);
   return { balance: result.data.balance };
+}
+
+// Transaction APIs
+export async function getRecentTransactions(limit: number = 50, offset: number = 0): Promise<TransactionsData> {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString()
+  });
+
+  const response = await fetch(`${API_BASE_URL}/api/transactions?${params}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  const result = await handleResponse<{ success: boolean; data: TransactionsData }>(response);
+  return result.data;
+}
+
+export async function getTransactionsByAddress(address: string, limit: number = 50, offset: number = 0): Promise<TransactionsData> {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString()
+  });
+
+  const response = await fetch(`${API_BASE_URL}/api/transactions/${address}?${params}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  const result = await handleResponse<{ success: boolean; data: TransactionsData }>(response);
+  return result.data;
 }
 
 // Utility functions

@@ -11,6 +11,7 @@ import { createCorporateActionsRouter } from './routes/corporate-actions';
 import { createCapTableRouter } from './routes/cap-table';
 import { createAllowlistRouter } from './routes/allowlist';
 import { createRelayerRouter } from './routes/relayer';
+import { createTransactionsRouter } from './routes/transactions';
 
 // Load environment variables
 dotenv.config({ path: '../.env' });
@@ -129,6 +130,10 @@ app.get('/', (_req: Request, res: Response) => {
       relayer: {
         submit: 'POST /api/relayer/submit',
         address: 'GET /api/relayer/address'
+      },
+      transactions: {
+        list: 'GET /api/transactions',
+        byAddress: 'GET /api/transactions/:address'
       }
     }
   });
@@ -142,6 +147,7 @@ const mountRoutes = () => {
   app.use('/api/cap-table', createCapTableRouter(blockchainService, dbQueries));
   app.use('/api/allowlist', createAllowlistRouter(blockchainService, dbQueries));
   app.use('/api/relayer', createRelayerRouter(blockchainService));
+  app.use('/api/transactions', createTransactionsRouter(dbQueries));
   console.log('API routes mounted');
 
   // Error handling middleware (must be after routes)

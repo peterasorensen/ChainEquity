@@ -153,7 +153,11 @@ export class EventIndexer {
   // Handle different event types
   private async handleEvent(eventName: string, args: any, log: Log) {
     const blockNumber = Number(log.blockNumber);
-    const timestamp = Date.now(); // In production, we'd fetch block timestamp
+
+    // Fetch the actual block timestamp
+    const publicClient = this.blockchainService.getPublicClient();
+    const block = await publicClient.getBlock({ blockNumber: log.blockNumber! });
+    const timestamp = Number(block.timestamp); // Block timestamp in seconds
 
     switch (eventName) {
       case 'Transfer':

@@ -11,22 +11,109 @@ export default function CapTable() {
   const [data, setData] = useState<CapTableData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [blockNumber, setBlockNumber] = useState<string>('');
+  const [historicalMode, setHistoricalMode] = useState(false);
 
   useEffect(() => {
     loadCapTableData();
   }, []);
 
-  const loadCapTableData = async () => {
+  const loadCapTableData = async (blockNum?: number) => {
     try {
       setLoading(true);
       setError(null);
-      const capTableData = await getCapTableData();
+      const capTableData = await getCapTableData(blockNum);
       setData(capTableData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load cap table data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleHistoricalQuery = () => {
+    const blockNum = parseInt(blockNumber, 10);
+    if (isNaN(blockNum) || blockNum < 0) {
+      setError('Please enter a valid block number');
+      return;
+    }
+    setHistoricalMode(true);
+    loadCapTableData(blockNum);
+  };
+
+  const handleCurrentQuery = () => {
+    setHistoricalMode(false);
+    setBlockNumber('');
+    loadCapTableData();
+  };
+
+  const exportToCSV = () => {
+    if (!data) return;
+
+    const fromWei = (weiValue: string): number => {
+      return parseFloat(weiValue) / 1e18;
+    };
+
+    // Create CSV header
+    const headers = ['Wallet Address', 'Balance', 'Ownership %'];
+
+    // Create CSV rows
+    const rows = data.entries.map(entry => [
+      entry.address,
+      fromWei(entry.balance).toString(),
+      entry.percentage.toFixed(2)
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `cap-table-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToJSON = () => {
+    if (!data) return;
+
+    const fromWei = (weiValue: string): number => {
+      return parseFloat(weiValue) / 1e18;
+    };
+
+    // Create export data structure
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      summary: {
+        totalSupply: fromWei(data.totalShares || '0'),
+        totalRaised: parseFloat(data.totalRaised || '0'),
+        totalHolders: data.holders || 0
+      },
+      holders: data.entries.map(entry => ({
+        address: entry.address,
+        balance: fromWei(entry.balance),
+        ownershipPercentage: parseFloat(entry.percentage.toFixed(2))
+      }))
+    };
+
+    // Create and download file
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `cap-table-${new Date().toISOString().split('T')[0]}.json`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (loading) {
@@ -44,7 +131,7 @@ export default function CapTable() {
         <div className={styles.error}>
           <strong>Error:</strong> {error}
         </div>
-        <button className="btn btn-primary" onClick={loadCapTableData}>
+        <button className="btn btn-primary" onClick={() => loadCapTableData()}>
           Retry
         </button>
       </div>
@@ -76,6 +163,58 @@ export default function CapTable() {
 
   return (
     <div className={styles.container}>
+      {/* Historical Query Controls */}
+      <div className={styles.controls}>
+        <div className={styles.queryMode}>
+          <button
+            className={`btn ${!historicalMode ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={handleCurrentQuery}
+          >
+            Current Cap Table
+          </button>
+          <button
+            className={`btn ${historicalMode ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setHistoricalMode(true)}
+          >
+            Historical Query
+          </button>
+        </div>
+
+        {historicalMode && (
+          <div className={styles.historicalControls}>
+            <div className={styles.inputGroup}>
+              <label htmlFor="blockNumber" className={styles.inputLabel}>
+                Block Number:
+              </label>
+              <input
+                id="blockNumber"
+                type="number"
+                value={blockNumber}
+                onChange={(e) => setBlockNumber(e.target.value)}
+                placeholder="Enter block number"
+                className={styles.inputField}
+                min="0"
+              />
+            </div>
+            <button
+              className="btn btn-primary"
+              onClick={handleHistoricalQuery}
+              disabled={!blockNumber.trim()}
+            >
+              Query Historical Data
+            </button>
+          </div>
+        )}
+
+        {historicalMode && (
+          <div className={styles.historicalNote}>
+            <span className="text-sm text-secondary">
+              Showing cap table as it existed at block {blockNumber}
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* Stats Overview */}
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
@@ -169,6 +308,14 @@ export default function CapTable() {
       <div className={styles.tableCard}>
         <div className={styles.tableHeader}>
           <h3 className={styles.tableTitle}>Token Holders</h3>
+          <div className={styles.exportButtons}>
+            <button className="btn btn-secondary" onClick={exportToCSV} disabled={!data || entries.length === 0}>
+              Export CSV
+            </button>
+            <button className="btn btn-secondary" onClick={exportToJSON} disabled={!data || entries.length === 0}>
+              Export JSON
+            </button>
+          </div>
         </div>
         <div className={styles.tableWrapper}>
           {entries.length > 0 ? (
@@ -204,7 +351,7 @@ export default function CapTable() {
 
       {/* Refresh Button */}
       <div className="mt-lg">
-        <button className="btn btn-secondary" onClick={loadCapTableData}>
+        <button className="btn btn-secondary" onClick={() => loadCapTableData()}>
           Refresh Data
         </button>
       </div>

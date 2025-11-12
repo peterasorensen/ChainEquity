@@ -11,6 +11,7 @@ import AllowlistManager from './components/AllowlistManager';
 import MintTokens from './components/MintTokens';
 import CorporateActions from './components/CorporateActions';
 import TransferTokens from './components/TransferTokens';
+import TransactionsHistory from './components/TransactionsHistory';
 import styles from './page.module.css';
 
 export default function Home() {
@@ -95,6 +96,8 @@ export default function Home() {
         return isAdmin ? <CorporateActions /> : <CapTable />;
       case 'transfer':
         return <TransferTokens />;
+      case 'transactions':
+        return <TransactionsHistory />;
       default:
         return <CapTable />;
     }
@@ -126,6 +129,11 @@ export default function Home() {
         return {
           title: 'Transfer Tokens',
           description: 'Send equity tokens to other approved addresses'
+        };
+      case 'transactions':
+        return {
+          title: 'Transaction History',
+          description: 'View recent blockchain transactions and activity'
         };
       default:
         return {

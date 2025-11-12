@@ -44,6 +44,20 @@ export default function Sidebar({ activeSection, onSectionChange, userRole }: Si
           Transfer
         </div>
 
+        {/* Transactions - Available to both admin and user */}
+        <div
+          className={`${styles.navItem} ${activeSection === 'transactions' ? styles.active : ''}`}
+          onClick={() => onSectionChange('transactions')}
+        >
+          <div className={styles.navIcon}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 5H7C5.89543 5 5 5.89543 5 7V16C5 17.1046 5.89543 18 7 18H13C14.1046 18 15 17.1046 15 16V7C15 5.89543 14.1046 5 13 5H11M9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5C15 3.89543 14.1046 3 13 3H11C9.89543 3 9 3.89543 9 5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          Transactions
+        </div>
+
         {/* Admin-only menu items */}
         {isAdmin && (
           <>
