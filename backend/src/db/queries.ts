@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { AllowlistEntry, BalanceEntry, TransactionEntry, CorporateActionEntry, CapTableEntry } from '../types';
+import { AllowlistEntry, BalanceEntry, TransactionEntry, CorporateActionEntry } from '../types';
 
 export class DatabaseQueries {
   constructor(private db: Database.Database) {}
@@ -182,84 +182,84 @@ export class DatabaseQueries {
     return cumulativeMultiplier;
   }
 
-  // Cap table operations
-  getCapTable(blockNumber?: number, currentMultiplier?: bigint): CapTableEntry[] {
-    let balances: BalanceEntry[];
 
-    if (blockNumber !== undefined) {
-      // For historical cap table, we need to reconstruct balances at that block
-      balances = this.getHistoricalBalances(blockNumber, currentMultiplier);
-    } else {
-      // Current cap table
-      balances = this.getAllBalances();
+  // Public method that takes current balances from blockchain
+  getHistoricalBalancesFromCurrent(blockNumber: number, currentBalances: Array<{ address: string; balance: bigint }>, contractMultiplier: bigint): BalanceEntry[] {
+    const balances = new Map<string, bigint>();
+
+    // Initialize with current blockchain balances
+    for (const entry of currentBalances) {
+      balances.set(entry.address, entry.balance);
     }
 
-    // Calculate total supply
-    const totalSupply = balances.reduce((sum, entry) => {
-      return sum + BigInt(entry.balance);
-    }, BigInt(0));
+    console.log(`\n=== Historical Balance Calculation for block ${blockNumber} ===`);
+    console.log('Starting balances (from blockchain):', Array.from(balances.entries()).map(([addr, bal]) => `${addr.slice(0,8)}: ${bal.toString()}`));
 
-    // Calculate percentages
-    return balances.map(entry => {
-      const balance = BigInt(entry.balance);
-      const percentage = totalSupply > 0
-        ? Number((balance * BigInt(10000)) / totalSupply) / 100
-        : 0;
-
-      return {
-        address: entry.address,
-        balance: entry.balance,
-        percentage
-      };
-    });
-  }
-
-  private getHistoricalBalances(blockNumber: number, currentMultiplier?: bigint): BalanceEntry[] {
-    // Get all transactions up to and including the specified block
+    // Get all transactions that happened AFTER the queried block
+    // We'll reverse these to get the historical state
     const stmt = this.db.prepare(`
-      SELECT from_addr, to_addr, amount
+      SELECT from_addr, to_addr, amount, block_number
       FROM transactions
-      WHERE block_number <= ?
-      ORDER BY block_number ASC, timestamp ASC
+      WHERE block_number > ?
+      ORDER BY block_number DESC, timestamp DESC
     `);
 
-    const transactions = stmt.all(blockNumber) as Array<{
+    const futureTransactions = stmt.all(blockNumber) as Array<{
       from_addr: string;
       to_addr: string;
       amount: string;
+      block_number: number;
     }>;
 
-    // Reconstruct balances
-    const balances = new Map<string, bigint>();
+    console.log(`Found ${futureTransactions.length} transactions after block ${blockNumber}`);
 
-    for (const tx of transactions) {
-      // Handle mints (from zero address)
-      if (tx.from_addr === '0x0000000000000000000000000000000000000000') {
-        const currentBalance = balances.get(tx.to_addr) || BigInt(0);
-        balances.set(tx.to_addr, currentBalance + BigInt(tx.amount));
-      } else {
-        // Regular transfer
+    // Use the contract multiplier for transaction amounts
+    // Transaction amounts in DB are raw on-chain values, but current blockchain balances include multiplier
+    const multiplier = contractMultiplier;
+    console.log('Multiplier for tx amounts:', multiplier.toString(), '(', Number(multiplier) / 1e18, 'x)');
+
+    // Reverse the transactions to go back in time
+    for (const tx of futureTransactions) {
+      // Apply multiplier to transaction amount since blockchain balances have multiplier applied
+      const rawAmount = BigInt(tx.amount);
+      const amount = rawAmount * multiplier / BigInt(1e18);
+
+      console.log(`\nReversing tx at block ${tx.block_number}: ${tx.from_addr.slice(0,8)} -> ${tx.to_addr.slice(0,8)}`);
+      console.log(`  Raw amount: ${rawAmount.toString()}, Adjusted: ${amount.toString()}`);
+
+      // Handle burns (to zero address) - reverse by adding back to sender
+      if (tx.to_addr === '0x0000000000000000000000000000000000000000') {
+        const fromBalance = balances.get(tx.from_addr) || BigInt(0);
+        console.log(`  BURN reversal: ${tx.from_addr.slice(0,8)} ${fromBalance.toString()} + ${amount.toString()}`);
+        balances.set(tx.from_addr, fromBalance + amount);
+      }
+      // Handle mints (from zero address) - reverse by subtracting from recipient
+      else if (tx.from_addr === '0x0000000000000000000000000000000000000000') {
+        const toBalance = balances.get(tx.to_addr) || BigInt(0);
+        console.log(`  MINT reversal: ${tx.to_addr.slice(0,8)} ${toBalance.toString()} - ${amount.toString()} = ${(toBalance - amount).toString()}`);
+        balances.set(tx.to_addr, toBalance - amount);
+      }
+      // Regular transfer - reverse by subtracting from recipient and adding to sender
+      else {
         const fromBalance = balances.get(tx.from_addr) || BigInt(0);
         const toBalance = balances.get(tx.to_addr) || BigInt(0);
 
-        balances.set(tx.from_addr, fromBalance - BigInt(tx.amount));
-        balances.set(tx.to_addr, toBalance + BigInt(tx.amount));
+        console.log(`  TRANSFER reversal: ${tx.from_addr.slice(0,8)} ${fromBalance.toString()} + ${amount.toString()}, ${tx.to_addr.slice(0,8)} ${toBalance.toString()} - ${amount.toString()}`);
+        balances.set(tx.from_addr, fromBalance + amount);
+        balances.set(tx.to_addr, toBalance - amount);
       }
     }
 
-    // Use the current multiplier from the contract if provided, otherwise default to 1
-    const multiplier = currentMultiplier || BigInt(1e18);
+    console.log('\nFinal balances:', Array.from(balances.entries()).map(([addr, bal]) => `${addr.slice(0,8)}: ${bal.toString()}`));
+    console.log('=== End Historical Balance Calculation ===\n');
 
-    // Convert to array and filter out zero balances
+    // Convert to array and filter out zero or negative balances
     const result: BalanceEntry[] = [];
     for (const [address, balance] of balances.entries()) {
-      // Apply current multiplier to get the balance in today's terms
-      const adjustedBalance = balance * multiplier / BigInt(1e18);
-
-      if (adjustedBalance > BigInt(0)) {
+      if (balance > BigInt(0)) {
         result.push({
           address,
-          balance: adjustedBalance.toString(),
+          balance: balance.toString(),
           timestamp: Date.now() // Historical reconstruction
         });
       }

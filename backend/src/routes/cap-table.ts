@@ -31,10 +31,41 @@ export const createCapTableRouter = (blockchainService: BlockchainService, dbQue
       let balanceResults: Array<{ address: string; balance: bigint }>;
 
       if (blockNum !== undefined) {
-        // For historical queries, use database reconstruction with current multiplier
+        // For historical queries, start from current blockchain balances and work backwards
         console.log(`Reconstructing balances at block ${blockNum}`);
+
+        // Get list of all addresses from database
+        const dbBalances = dbQueries.getAllBalances();
+
+        // Query current blockchain balances for each address
+        const currentBalancePromises = dbBalances.map(async (entry: any) => {
+          try {
+            const balance = await publicClient.readContract({
+              address: contractAddress,
+              abi: [{
+                type: 'function',
+                name: 'balanceOf',
+                inputs: [{ type: 'address' }],
+                outputs: [{ type: 'uint256' }],
+                stateMutability: 'view'
+              }],
+              functionName: 'balanceOf',
+              args: [entry.address as `0x${string}`]
+            });
+            return { address: entry.address, balance: balance as bigint };
+          } catch (error) {
+            console.error(`Error querying balance for ${entry.address}:`, error);
+            return { address: entry.address, balance: BigInt(0) };
+          }
+        });
+
+        const currentBalances = await Promise.all(currentBalancePromises);
+
+        // Get current multiplier from contract
         const currentMultiplier = await blockchainService.getCurrentMultiplier();
-        const historicalBalances = dbQueries.getCapTable(blockNum, currentMultiplier);
+
+        // Now apply reverse transaction logic
+        const historicalBalances = dbQueries.getHistoricalBalancesFromCurrent(blockNum, currentBalances, currentMultiplier);
         balanceResults = historicalBalances.map((entry: any) => ({
           address: entry.address,
           balance: BigInt(entry.balance)
